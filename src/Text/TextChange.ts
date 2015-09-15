@@ -217,7 +217,7 @@ namespace Razor.Text
      */
     public static getText(buffer: ITextBuffer, position: number, length: number): string
     {
-      var oldPosition: number, builder: string[], i: number, c: string;
+      var oldPosition: number, builder: string[], i: number = 0, c: string;
       
       if (length === 0)
       {

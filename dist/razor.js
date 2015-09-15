@@ -138,7 +138,7 @@ var Razor;
             return tracker.currentLocation;
         };
         SourceLocation.prototype.compareTo = function (other) {
-            if (!!other) {
+            if (!other) {
                 return -1;
             }
             return ((this.absoluteIndex < other.absoluteIndex) ? -1 : (this.absoluteIndex === other.absoluteIndex) ? 0 : 1);
@@ -1080,7 +1080,7 @@ var Razor;
                 return false;
             };
             TextChange.getText = function (buffer, position, length) {
-                var oldPosition, builder, i, c;
+                var oldPosition, builder, i = 0, c;
                 if (length === 0) {
                     return '';
                 }

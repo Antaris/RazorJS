@@ -79,7 +79,7 @@ namespace Razor
      */
     public compareTo(other: SourceLocation): number
     {
-      if (!!other) 
+      if (!other) 
       {
         return -1;
       }

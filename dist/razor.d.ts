@@ -65,6 +65,7 @@ declare module Razor {
     }
 }
 declare module Razor {
+    function Using(contextOrDisposable: any | IDisposable, disposableOrAction: IDisposable | Function, action?: Function): void;
 }
 declare module Razor.Parser.SyntaxTree {
     class Span {
