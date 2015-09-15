@@ -1,0 +1,10 @@
+{
+  "spec_dir": "spec",
+  "src": "./dist/razor.js",
+  "spec_files": [
+    "**/*[sS]pec.js"
+  ],
+  "helpers": [
+    "helpers/**/*.js"
+  ]
+}

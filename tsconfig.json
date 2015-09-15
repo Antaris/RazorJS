@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "noImplicitAny": false,
+    "removeComments": true,
+    "preserveConstEnums": true,
+    "out": "./dist/razor.js",
+    "target": "ES5",
+    "sourceMap": true,
+    "declaration": true
+  },
+  "exclude": [
+    ".vscode",
+    "node_modules",
+    "bower_components",
+    "dist"
+  ]
+}
