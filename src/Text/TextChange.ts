@@ -257,7 +257,11 @@ namespace Razor.Text
      */
     public normalize(): TextChange
     {
-      if (!!this._oldBuffer && this.isReplace && this._newLength > 0 && this._newPosition === this._oldPosition && this.newText.indexOf(this.oldText))
+      if (!!this._oldBuffer && 
+            this.isReplace && 
+            this._newLength > this._oldLength && 
+            this._newPosition === this._oldPosition && 
+            this.newText.indexOf(this.oldText) >= 0)
       {
         return new TextChange(this.oldPosition + this.oldLength, 0, this.oldBuffer, this.oldPosition + this.oldLength, this.newLength - this.oldLength, this.newBuffer);
       }

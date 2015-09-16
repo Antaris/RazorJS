@@ -14,7 +14,7 @@ namespace Razor.Text
      */
     constructor(public start: number, public index: number, public content?: string)
     {
-      if (!!content)
+      if (!content)
       {
         this.content = '';
       }

@@ -1,10 +1,10 @@
 /// <reference path="../../typings/tsd.d.ts" />
 /// <reference path="../../dist/razor.d.ts" />
-/// <reference path="../helpers/StringTextBuffer.d.ts" />
 
 describe("Razor.Text", function () {
   
   var TextChange = Razor.Text.TextChange;
+  var StringTextBuffer = Razor.Tests.StringTextBuffer;
       
   describe("TextChange", function () {
     
@@ -215,7 +215,7 @@ describe("Razor.Text", function () {
       expect(text).toEqual("bcbcdefg");
     });
     
-    it("normalize fixes up intellisense style replacements", function () {
+    it("normalize() fixes up intellisense style replacements", function () {
       // Arrange
       var oldBuffer = new StringTextBuffer('Date');
       var newBuffer = new StringTextBuffer('Date.');
@@ -223,10 +223,37 @@ describe("Razor.Text", function () {
       
       // Act
       var normalized = original.normalize();
-      console.log(normalized);
       
       // Assert
       var result = normalized.equals(new TextChange(4, 0, oldBuffer, 1, newBuffer));
+      expect(result).toEqual(true);
+    });
+    
+    it("normalize() doesn't affect changes without common prefixes", function () {
+      // Arrange
+      var oldBuffer = new StringTextBuffer('Date.');
+      var newBuffer = new StringTextBuffer('DateTime.');
+      var original = new TextChange(0, 5, oldBuffer, 9, newBuffer);
+      
+      // Act
+      var normalized = original.normalize();
+      
+      // Assert
+      var result = normalized.equals(original);
+      expect(result).toEqual(true);
+    });
+    
+    if("normalize() doesn't affect shrinking replacements", function () {
+      // Arrange
+      var oldBuffer = new StringTextBuffer('DateTime');
+      var newBuffer = new StringTextBuffer('D');
+      var original = new TextChange(0, 9, oldBuffer, 1, newBuffer);
+      
+      // Act
+      var normalized = original.normalize();
+      
+      // Assert
+      var result = normalized.equals(original);
       expect(result).toEqual(true);
     });
     

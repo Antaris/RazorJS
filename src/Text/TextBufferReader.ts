@@ -46,7 +46,7 @@ namespace Razor.Text
      * @readonly
      * @returns {SourceLocation}
      */
-    public get location(): SourceLocation
+    public get currentLocation(): SourceLocation
     {
       return this._tracker.currentLocation;
     }
@@ -110,7 +110,7 @@ namespace Razor.Text
      */
     public peek(): string|number
     {
-      return this._buffer.read();
+      return this._buffer.peek();
     }
     
     /**

@@ -115,8 +115,12 @@ namespace Razor.Text
      */
     public readToEnd(): string
     {
-      var buffer: string[], len: number, res: string[] = [];
-      while ((len = <number>this.read(buffer, 0, 4096)) !== 0)
+      var size = 4096;
+      var buffer: string[] = <string[]>(new Array(size)),
+          len: number, 
+          res: string[] = [];
+          
+      while ((len = <number>this.read(buffer, 0, size)) !== 0)
       {
         res = res.concat(buffer.slice(0, len));
       }

@@ -74,6 +74,29 @@ declare module Razor.Parser.SyntaxTree {
     }
 }
 declare module Razor.Text {
+    interface ITextBuffer {
+        length: number;
+        position: number;
+        peek(): string | number;
+        read(): string | number;
+        readToEnd(): string;
+    }
+}
+declare module Razor.Tests {
+    import ITextBuffer = Razor.Text.ITextBuffer;
+    class StringTextBuffer implements ITextBuffer {
+        private _position;
+        private _length;
+        private _buffer;
+        constructor(buffer?: string);
+        length: number;
+        position: number;
+        peek(): string | number;
+        read(): string | number;
+        readToEnd(): string;
+    }
+}
+declare module Razor.Text {
     class BacktrackContext {
         location: SourceLocation;
         bufferIndex: number;
@@ -129,15 +152,6 @@ declare module Razor.Text {
         constructor(character: string, location: SourceLocation);
         character: string;
         location: SourceLocation;
-    }
-}
-declare module Razor.Text {
-    interface ITextBuffer {
-        length: number;
-        position: number;
-        peek(): string | number;
-        read(): string | number;
-        readToEnd(): string;
     }
 }
 declare module Razor.Text {
@@ -213,6 +227,18 @@ declare module Razor.Text {
     }
 }
 declare module Razor.Text {
+    class StringBuilder {
+        private _buffer;
+        constructor(content?: string);
+        length: number;
+        append(content: string, startIndexOrRepeat?: number, count?: number): StringBuilder;
+        private appendCore(content, startIndex, count);
+        charAt(index: number): string;
+        clear(): void;
+        toString(): string;
+    }
+}
+declare module Razor.Text {
     class StringTextReader extends TextReader {
         private _string;
         private _position;
@@ -231,7 +257,7 @@ declare module Razor.Text {
         private _buffer;
         constructor(buffer: ITextBuffer);
         buffer: ITextBuffer;
-        location: SourceLocation;
+        currentLocation: SourceLocation;
         beginLookahead(): IDisposable;
         cancelBacktrack(): void;
         private endLookahead(context);

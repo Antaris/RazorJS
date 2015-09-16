@@ -214,6 +214,55 @@ var Razor;
         })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
     })(Parser = Razor.Parser || (Razor.Parser = {}));
 })(Razor || (Razor = {}));
+/// <reference path="../Text/ITextBuffer.ts" />
+var Razor;
+(function (Razor) {
+    var Tests;
+    (function (Tests) {
+        var EOF = -1;
+        var StringTextBuffer = (function () {
+            function StringTextBuffer(buffer) {
+                this._buffer = buffer || '';
+                this._position = 0;
+                this._length = this._buffer.length;
+            }
+            Object.defineProperty(StringTextBuffer.prototype, "length", {
+                get: function () {
+                    return this._length;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(StringTextBuffer.prototype, "position", {
+                get: function () {
+                    return this._position;
+                },
+                set: function (value) {
+                    this._position = value;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            StringTextBuffer.prototype.peek = function () {
+                if (this.position >= this._buffer.length) {
+                    return EOF;
+                }
+                return this._buffer[this.position];
+            };
+            StringTextBuffer.prototype.read = function () {
+                if (this.position >= this._buffer.length) {
+                    return EOF;
+                }
+                return this._buffer[this.position++];
+            };
+            StringTextBuffer.prototype.readToEnd = function () {
+                return this._buffer.substr(this.position);
+            };
+            return StringTextBuffer;
+        })();
+        Tests.StringTextBuffer = StringTextBuffer;
+    })(Tests = Razor.Tests || (Razor.Tests = {}));
+})(Razor || (Razor = {}));
 /// <reference path="../SourceLocation.ts" />
 var Razor;
 (function (Razor) {
@@ -286,8 +335,9 @@ var Razor;
                 return null;
             };
             TextReader.prototype.readToEnd = function () {
-                var buffer, len, res = [];
-                while ((len = this.read(buffer, 0, 4096)) !== 0) {
+                var size = 4096;
+                var buffer = (new Array(size)), len, res = [];
+                while ((len = this.read(buffer, 0, size)) !== 0) {
                     res = res.concat(buffer.slice(0, len));
                 }
                 return res.join('');
@@ -501,7 +551,7 @@ var Razor;
                 this.start = start;
                 this.index = index;
                 this.content = content;
-                if (!!content) {
+                if (!content) {
                     this.content = '';
                 }
             }
@@ -790,6 +840,65 @@ var Razor;
         Text.SourceSpan = SourceSpan;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Text;
+    (function (Text) {
+        var StringBuilder = (function () {
+            function StringBuilder(content) {
+                if (!!content) {
+                    this._buffer = content.split('');
+                }
+                else {
+                    this._buffer = [];
+                }
+            }
+            Object.defineProperty(StringBuilder.prototype, "length", {
+                get: function () {
+                    return this._buffer.length;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            StringBuilder.prototype.append = function (content, startIndexOrRepeat, count) {
+                if (!!content && content.length > 1) {
+                    this.appendCore(content, 0, content.length);
+                }
+                else if (!!count) {
+                    this.appendCore(content, startIndexOrRepeat, count);
+                }
+                else if (!!startIndexOrRepeat) {
+                    for (var i = 0; i < startIndexOrRepeat; i++) {
+                        this.appendCore(content[0], 0, 1);
+                    }
+                }
+                else if (!!content) {
+                    this.appendCore(content[0], 0, 1);
+                }
+                return this;
+            };
+            StringBuilder.prototype.appendCore = function (content, startIndex, count) {
+                for (var i = startIndex; i < content.length && i < (startIndex + count); i++) {
+                    this._buffer.push(content[i]);
+                }
+            };
+            StringBuilder.prototype.charAt = function (index) {
+                if (index >= this.length) {
+                    throw "Index out of range: " + index;
+                }
+                return this._buffer[index];
+            };
+            StringBuilder.prototype.clear = function () {
+                this._buffer = [];
+            };
+            StringBuilder.prototype.toString = function () {
+                return this._buffer.join("");
+            };
+            return StringBuilder;
+        })();
+        Text.StringBuilder = StringBuilder;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
 /// <reference path="../Internals/IDisposable.ts" />
 /// <reference path="TextReader.ts" />
 var Razor;
@@ -891,7 +1000,7 @@ var Razor;
                 enumerable: true,
                 configurable: true
             });
-            Object.defineProperty(TextBufferReader.prototype, "location", {
+            Object.defineProperty(TextBufferReader.prototype, "currentLocation", {
                 get: function () {
                     return this._tracker.currentLocation;
                 },
@@ -923,7 +1032,7 @@ var Razor;
                 }
             };
             TextBufferReader.prototype.peek = function () {
-                return this._buffer.read();
+                return this._buffer.peek();
             };
             TextBufferReader.prototype.read = function (buffer, index, count) {
                 if (arguments.length === 3) {
@@ -1104,7 +1213,11 @@ var Razor;
                 }
             };
             TextChange.prototype.normalize = function () {
-                if (!!this._oldBuffer && this.isReplace && this._newLength > 0 && this._newPosition === this._oldPosition && this.newText.indexOf(this.oldText)) {
+                if (!!this._oldBuffer &&
+                    this.isReplace &&
+                    this._newLength > this._oldLength &&
+                    this._newPosition === this._oldPosition &&
+                    this.newText.indexOf(this.oldText) >= 0) {
                     return new TextChange(this.oldPosition + this.oldLength, 0, this.oldBuffer, this.oldPosition + this.oldLength, this.newLength - this.oldLength, this.newBuffer);
                 }
                 return this;
