@@ -121,6 +121,18 @@ declare module Razor.Text {
     }
 }
 declare module Razor.Text {
+    class StringBuilder {
+        private _buffer;
+        constructor(content?: string);
+        length: number;
+        append(content: string, startIndexOrRepeat?: number, count?: number): StringBuilder;
+        private appendCore(content, startIndex, count);
+        charAt(index: number): string;
+        clear(): void;
+        toString(): string;
+    }
+}
+declare module Razor.Text {
     class BufferingTextReader extends LookaheadTextReader {
         private _backtrackStack;
         private _currentBufferPosition;
@@ -128,9 +140,8 @@ declare module Razor.Text {
         private _locationTracker;
         private _source;
         constructor(source: TextReader);
-        buffer: string[];
-        buffering: any;
-        boolean: any;
+        buffer: StringBuilder;
+        buffering: boolean;
         currentCharacter: string | number;
         currentLocation: SourceLocation;
         innerReader: TextReader;
@@ -224,18 +235,6 @@ declare module Razor.Text {
     class SourceSpan {
         begin: SourceLocation;
         end: SourceLocation;
-    }
-}
-declare module Razor.Text {
-    class StringBuilder {
-        private _buffer;
-        constructor(content?: string);
-        length: number;
-        append(content: string, startIndexOrRepeat?: number, count?: number): StringBuilder;
-        private appendCore(content, startIndex, count);
-        charAt(index: number): string;
-        clear(): void;
-        toString(): string;
     }
 }
 declare module Razor.Text {

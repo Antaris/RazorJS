@@ -382,12 +382,72 @@ var Razor;
         Text.LookaheadTextReader = LookaheadTextReader;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Text;
+    (function (Text) {
+        var StringBuilder = (function () {
+            function StringBuilder(content) {
+                if (!!content) {
+                    this._buffer = content.split('');
+                }
+                else {
+                    this._buffer = [];
+                }
+            }
+            Object.defineProperty(StringBuilder.prototype, "length", {
+                get: function () {
+                    return this._buffer.length;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            StringBuilder.prototype.append = function (content, startIndexOrRepeat, count) {
+                if (!!content && content.length > 1) {
+                    this.appendCore(content, 0, content.length);
+                }
+                else if (!!count) {
+                    this.appendCore(content, startIndexOrRepeat, count);
+                }
+                else if (!!startIndexOrRepeat) {
+                    for (var i = 0; i < startIndexOrRepeat; i++) {
+                        this.appendCore(content[0], 0, 1);
+                    }
+                }
+                else if (!!content) {
+                    this.appendCore(content[0], 0, 1);
+                }
+                return this;
+            };
+            StringBuilder.prototype.appendCore = function (content, startIndex, count) {
+                for (var i = startIndex; i < content.length && i < (startIndex + count); i++) {
+                    this._buffer.push(content[i]);
+                }
+            };
+            StringBuilder.prototype.charAt = function (index) {
+                if (index >= this.length) {
+                    throw "Index out of range: " + index;
+                }
+                return this._buffer[index];
+            };
+            StringBuilder.prototype.clear = function () {
+                this._buffer = [];
+            };
+            StringBuilder.prototype.toString = function () {
+                return this._buffer.join("");
+            };
+            return StringBuilder;
+        })();
+        Text.StringBuilder = StringBuilder;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
 /// <reference path="BacktrackContext.ts" />
 /// <reference path="SourceLocationTracker.ts" />
 /// <reference path="TextReader.ts" />
 /// <reference path="../SourceLocation.ts" />
 /// <reference path="../Internals/DisposableAction.ts" />
 /// <reference path="LookaheadTextReader.ts" />
+/// <reference path="StringBuilder.ts" />
 var Razor;
 (function (Razor) {
     var Text;
@@ -427,7 +487,7 @@ var Razor;
             BufferingTextReader.prototype.beginLookahead = function () {
                 var _this = this;
                 if (this.buffer === null) {
-                    this.buffer = [];
+                    this.buffer = new Text.StringBuilder();
                 }
                 if (!this.buffering) {
                     this.expandBuffer();
@@ -455,8 +515,8 @@ var Razor;
             BufferingTextReader.prototype.expandBuffer = function () {
                 var ch = this.innerReader.read();
                 if (ch !== EOF) {
-                    this.buffer.push(ch);
-                    this._currentBufferPosition = this.buffer.length = -1;
+                    this.buffer.append(ch);
+                    this._currentBufferPosition = this.buffer.length - 1;
                     return true;
                 }
                 return false;
@@ -467,9 +527,9 @@ var Razor;
                     return;
                 }
                 if (this.buffering) {
-                    if (this._currentBufferPosition >= this.buffer.length) {
+                    if (this._currentBufferPosition >= this.buffer.length - 1) {
                         if (this._backtrackStack.length === 0) {
-                            this.buffer = [];
+                            this.buffer.clear();
                             this._currentBufferPosition = 0;
                             this.buffering = false;
                         }
@@ -500,7 +560,7 @@ var Razor;
             };
             BufferingTextReader.prototype.updateCurrentCharacter = function () {
                 if (this.buffering && this._currentBufferPosition < this.buffer.length) {
-                    this._currentCharacter = this.buffer[this._currentBufferPosition];
+                    this._currentCharacter = this.buffer.charAt(this._currentBufferPosition);
                 }
                 else {
                     this._currentCharacter = this.innerReader.peek();
@@ -838,65 +898,6 @@ var Razor;
             return SourceSpan;
         })();
         Text.SourceSpan = SourceSpan;
-    })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
-var Razor;
-(function (Razor) {
-    var Text;
-    (function (Text) {
-        var StringBuilder = (function () {
-            function StringBuilder(content) {
-                if (!!content) {
-                    this._buffer = content.split('');
-                }
-                else {
-                    this._buffer = [];
-                }
-            }
-            Object.defineProperty(StringBuilder.prototype, "length", {
-                get: function () {
-                    return this._buffer.length;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            StringBuilder.prototype.append = function (content, startIndexOrRepeat, count) {
-                if (!!content && content.length > 1) {
-                    this.appendCore(content, 0, content.length);
-                }
-                else if (!!count) {
-                    this.appendCore(content, startIndexOrRepeat, count);
-                }
-                else if (!!startIndexOrRepeat) {
-                    for (var i = 0; i < startIndexOrRepeat; i++) {
-                        this.appendCore(content[0], 0, 1);
-                    }
-                }
-                else if (!!content) {
-                    this.appendCore(content[0], 0, 1);
-                }
-                return this;
-            };
-            StringBuilder.prototype.appendCore = function (content, startIndex, count) {
-                for (var i = startIndex; i < content.length && i < (startIndex + count); i++) {
-                    this._buffer.push(content[i]);
-                }
-            };
-            StringBuilder.prototype.charAt = function (index) {
-                if (index >= this.length) {
-                    throw "Index out of range: " + index;
-                }
-                return this._buffer[index];
-            };
-            StringBuilder.prototype.clear = function () {
-                this._buffer = [];
-            };
-            StringBuilder.prototype.toString = function () {
-                return this._buffer.join("");
-            };
-            return StringBuilder;
-        })();
-        Text.StringBuilder = StringBuilder;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
 /// <reference path="../Internals/IDisposable.ts" />

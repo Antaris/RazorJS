@@ -4,6 +4,7 @@
 /// <reference path="../SourceLocation.ts" />
 /// <reference path="../Internals/DisposableAction.ts" />
 /// <reference path="LookaheadTextReader.ts" />
+/// <reference path="StringBuilder.ts" />
 
 namespace Razor.Text
 {
@@ -42,14 +43,14 @@ namespace Razor.Text
      * @property
      * @returns {string[]}
      */
-    public buffer: string[];
+    public buffer: StringBuilder;
     
     /**
      * Gets or sets whether we are currently buffering
      * @property
      * @returns {boolean}
      */
-    public buffering; boolean;
+    public buffering: boolean;
     
     /**
      * Gets the current character
@@ -92,7 +93,7 @@ namespace Razor.Text
       if (this.buffer === null)
       {
         // Start the backtrack buffer
-        this.buffer = [];
+        this.buffer = new StringBuilder();
       }
       
       if (!this.buffering)
@@ -156,8 +157,8 @@ namespace Razor.Text
       // Only append the character to the buffer if there actually is one
       if (ch !== EOF)
       {
-        this.buffer.push(<string>ch);
-        this._currentBufferPosition = this.buffer.length = -1;
+        this.buffer.append(<string>ch);
+        this._currentBufferPosition = this.buffer.length - 1;
         return true;
       }
       
@@ -179,12 +180,12 @@ namespace Razor.Text
       
       if (this.buffering)
       {
-        if (this._currentBufferPosition >= this.buffer.length)
+        if (this._currentBufferPosition >= this.buffer.length - 1)
         {
           // If there are no more lookaheads (thus no need to continue with the buffer), we can just clean up the buffer
           if (this._backtrackStack.length === 0)
           {
-            this.buffer = [];
+            this.buffer.clear();
             this._currentBufferPosition = 0;
             this.buffering = false;
           }
@@ -247,7 +248,7 @@ namespace Razor.Text
     {
       if (this.buffering && this._currentBufferPosition < this.buffer.length)
       {
-        this._currentCharacter = this.buffer[this._currentBufferPosition];
+        this._currentCharacter = this.buffer.charAt(this._currentBufferPosition);
       } 
       else
       {
