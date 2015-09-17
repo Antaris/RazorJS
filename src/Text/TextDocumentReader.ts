@@ -69,6 +69,16 @@ namespace Razor.Text
     }
     
     /**
+     * Begins a lookahead operaiton on the buffer.
+     * @returns {LookaheadToken}
+     */
+    public beginLookahead(): LookaheadToken
+    {
+      var start = this.position;
+      return new LookaheadToken(() => this.position = start);
+    }
+    
+    /**
      * Peeks at the next character from the buffer without advancing the position.
      */
     public peek() : string|number
@@ -92,6 +102,25 @@ namespace Razor.Text
       }
       
       return this._document.read();
+    }
+    
+    /**
+     * Seeks the buffer
+     * @function
+     * @param {number} The number of characters to seek
+     */
+    public seek(count: number): void
+    {
+      this.position += count;
+    }
+    
+    /**
+     * Returns the current buffer as a text document.
+     * @returns {ITextDocument}
+     */
+    public toDocument(): ITextDocument
+    {
+      return this;
     }
   }
 }

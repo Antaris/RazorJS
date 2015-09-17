@@ -10,11 +10,11 @@ namespace Razor
    * @param {IDisposable|Function} disposableOrAction - The disposable type, or the dispose action if not providing a context
    * @param {Function} [action] The dispose action if providing a context
    */
-  export function Using(contextOrDisposable: any|IDisposable, disposableOrAction: IDisposable|Function, action?: Function)
+  export function Using(contextOrDisposable: any|IDisposable, disposableOrAction: IDisposable|Function, action?: (disposable: IDisposable) => void)
   {
     if (arguments.length === 2)
     {
-      action = <Function>disposableOrAction;
+      action = <(disposable: IDisposable|Function) => void>disposableOrAction;
       disposableOrAction = <IDisposable>contextOrDisposable;
       contextOrDisposable = null;
     }

@@ -56,6 +56,11 @@ namespace Razor.Text
      */
     public append(content: string): void
     {
+      if (content === null)
+      {
+        return;
+      }
+      
       for (var i = 0; i < content.length; i++)
       {
         this._lines[this._lines.length -1].content += content[i];

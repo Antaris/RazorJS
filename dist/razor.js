@@ -16,6 +16,15 @@ var Razor;
         var ParserHelpers = (function () {
             function ParserHelpers() {
             }
+            ParserHelpers.isDecimalDigit = function (value) {
+                return /[0-9]/.test(value);
+            };
+            ParserHelpers.isLetter = function (value) {
+                return /[a-zA-Z]/.test(value);
+            };
+            ParserHelpers.isLetterOrDecimalDigit = function (value) {
+                return ParserHelpers.isLetter(value) || ParserHelpers.isDecimalDigit(value);
+            };
             ParserHelpers.isNewLine = function (value) {
                 if (!!value) {
                     if (value.length == 1) {
@@ -28,6 +37,15 @@ var Razor;
                     return value === Razor.Environment.NewLine;
                 }
                 return false;
+            };
+            ParserHelpers.isWhiteSpace = function (value) {
+                return value === ' ' ||
+                    value === '\f' ||
+                    value === '\t' ||
+                    value === '\u000B';
+            };
+            ParserHelpers.isWhiteSpaceOrNewLine = function (value) {
+                return ParserHelpers.isWhiteSpace(value) || ParserHelpers.isNewLine(value);
             };
             return ParserHelpers;
         })();
@@ -165,6 +183,84 @@ var Razor;
     })();
     Razor.SourceLocation = SourceLocation;
 })(Razor || (Razor = {}));
+/// <reference path="SourceLocation.ts" />
+var Razor;
+(function (Razor) {
+    var RazorError = (function () {
+        function RazorError(message, location, length) {
+            this.message = message;
+            this.location = location;
+            this.length = length;
+        }
+        RazorError.prototype.equals = function (other) {
+            if (!other) {
+                return false;
+            }
+            return this.message === other.message &&
+                this.location.equals(other.location) &&
+                this.length === other.length;
+        };
+        return RazorError;
+    })();
+    Razor.RazorError = RazorError;
+})(Razor || (Razor = {}));
+/// <reference path="State.ts" />
+var Razor;
+(function (Razor) {
+    var StateResult = (function () {
+        function StateResult(nextOrOutput, next) {
+            if (typeof nextOrOutput === "function") {
+                this.next = nextOrOutput;
+                this.hasOutput = false;
+                this.output = null;
+            }
+            else {
+                this.next = next;
+                this.hasOutput = true;
+                this.output = nextOrOutput;
+            }
+        }
+        return StateResult;
+    })();
+    Razor.StateResult = StateResult;
+})(Razor || (Razor = {}));
+/// <reference path="StateResult.ts" />
+/// <reference path="State.ts" />
+/// <reference path="StateResult.ts" />
+var Razor;
+(function (Razor) {
+    var StateMachine = (function () {
+        function StateMachine() {
+        }
+        StateMachine.prototype.stay = function (output) {
+            return (arguments.length)
+                ? new Razor.StateResult(output, this.currentState)
+                : new Razor.StateResult(this.currentState);
+        };
+        StateMachine.prototype.stop = function () {
+            return null;
+        };
+        StateMachine.prototype.transition = function (outputOrNewState, newState) {
+            return new Razor.StateResult(outputOrNewState, newState);
+        };
+        StateMachine.prototype.turn = function () {
+            if (!!this.currentState) {
+                var result;
+                do {
+                    result = this.currentState();
+                    this.currentState = result.next;
+                } while (!!result && !result.hasOutput);
+                if (!result) {
+                    return null;
+                }
+                return result.output;
+            }
+            return null;
+        };
+        return StateMachine;
+    })();
+    Razor.StateMachine = StateMachine;
+})(Razor || (Razor = {}));
 /// <reference path="IDisposable.ts" />
 var Razor;
 (function (Razor) {
@@ -214,71 +310,40 @@ var Razor;
         })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
     })(Parser = Razor.Parser || (Razor.Parser = {}));
 })(Razor || (Razor = {}));
-/// <reference path="../Text/ITextBuffer.ts" />
-var Razor;
-(function (Razor) {
-    var Tests;
-    (function (Tests) {
-        var EOF = -1;
-        var StringTextBuffer = (function () {
-            function StringTextBuffer(buffer) {
-                this._buffer = buffer || '';
-                this._position = 0;
-                this._length = this._buffer.length;
-            }
-            Object.defineProperty(StringTextBuffer.prototype, "length", {
-                get: function () {
-                    return this._length;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(StringTextBuffer.prototype, "position", {
-                get: function () {
-                    return this._position;
-                },
-                set: function (value) {
-                    this._position = value;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            StringTextBuffer.prototype.peek = function () {
-                if (this.position >= this._buffer.length) {
-                    return EOF;
-                }
-                return this._buffer[this.position];
-            };
-            StringTextBuffer.prototype.read = function () {
-                if (this.position >= this._buffer.length) {
-                    return EOF;
-                }
-                return this._buffer[this.position++];
-            };
-            StringTextBuffer.prototype.readToEnd = function () {
-                return this._buffer.substr(this.position);
-            };
-            return StringTextBuffer;
-        })();
-        Tests.StringTextBuffer = StringTextBuffer;
-    })(Tests = Razor.Tests || (Razor.Tests = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../SourceLocation.ts" />
+/// <reference path="../Internals/DisposableAction.ts" />
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    __.prototype = b.prototype;
+    d.prototype = new __();
+};
 var Razor;
 (function (Razor) {
     var Text;
     (function (Text) {
-        var BacktrackContext = (function () {
-            function BacktrackContext(location, bufferIndex) {
-                this.location = location;
-                this.bufferIndex = bufferIndex;
-                this.bufferIndex = this.bufferIndex || 0;
+        var LookaheadToken = (function (_super) {
+            __extends(LookaheadToken, _super);
+            function LookaheadToken(action, context) {
+                _super.call(this, action, context);
+                this._accepted = false;
             }
-            return BacktrackContext;
-        })();
-        Text.BacktrackContext = BacktrackContext;
+            LookaheadToken.prototype.accept = function () {
+                this._accepted = true;
+            };
+            LookaheadToken.prototype.dispose = function () {
+                if (!this._accepted) {
+                    _super.prototype.dispose.call(this);
+                }
+            };
+            return LookaheadToken;
+        })(Razor.DisposableAction);
+        Text.LookaheadToken = LookaheadToken;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
+/// <reference path="../SourceLocation.ts" />
+/// <reference path="ITextBuffer.ts" />
+/// <reference path="LookaheadToken.ts" />
+/// <reference path="ITextDocument.ts" />"
 /// <reference path="../Internals/IDisposable.ts" />
 var Razor;
 (function (Razor) {
@@ -347,15 +412,345 @@ var Razor;
         Text.TextReader = TextReader;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
+/// <reference path="../SourceLocation.ts" />
+var Razor;
+(function (Razor) {
+    var Text;
+    (function (Text) {
+        var CharacterReference = (function () {
+            function CharacterReference(character, location) {
+                this._char = character;
+                this._loc = location;
+            }
+            Object.defineProperty(CharacterReference.prototype, "character", {
+                get: function () {
+                    return this._char;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(CharacterReference.prototype, "location", {
+                get: function () {
+                    return this._loc;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return CharacterReference;
+        })();
+        Text.CharacterReference = CharacterReference;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Text;
+    (function (Text) {
+        var TextLine = (function () {
+            function TextLine(start, index, content) {
+                this.start = start;
+                this.index = index;
+                this.content = content;
+                if (!content) {
+                    this.content = '';
+                }
+            }
+            Object.defineProperty(TextLine.prototype, "end", {
+                get: function () {
+                    return this.start + this.length;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextLine.prototype, "length", {
+                get: function () {
+                    return this.content.length;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            TextLine.prototype.contains = function (index) {
+                return index < this.end && index >= this.start;
+            };
+            return TextLine;
+        })();
+        Text.TextLine = TextLine;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
+/// <reference path="CharacterReference.ts" />
+/// <reference path="TextLine.ts" />
+/// <reference path="../SourceLocation.ts" />
+/// <reference path="../Parser/ParserHelpers.ts" />
+var Razor;
+(function (Razor) {
+    var Text;
+    (function (Text) {
+        var ParserHelpers = Razor.Parser.ParserHelpers;
+        var LineTrackingStringBuffer = (function () {
+            function LineTrackingStringBuffer() {
+                this._endLine = new Text.TextLine(0, 0);
+                this._lines = [this._endLine];
+            }
+            Object.defineProperty(LineTrackingStringBuffer.prototype, "endLocation", {
+                get: function () {
+                    return new Razor.SourceLocation(this.length, this._lines.length - 1, this._lines[this._lines.length - 1].length);
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(LineTrackingStringBuffer.prototype, "length", {
+                get: function () {
+                    return this._endLine.end;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            LineTrackingStringBuffer.prototype.append = function (content) {
+                if (content === null) {
+                    return;
+                }
+                for (var i = 0; i < content.length; i++) {
+                    this._lines[this._lines.length - 1].content += content[i];
+                    if ((content[i] === '\r' && (i + 1 === content.length || content[i + 1] !== '\n')) || (content[i] !== '\r' && ParserHelpers.isNewLine(content[i]))) {
+                        this.pushNewLine();
+                    }
+                }
+            };
+            LineTrackingStringBuffer.prototype.charAt = function (absoluteIndex) {
+                var line = this.findLine(absoluteIndex);
+                if (line === null) {
+                    throw "Argument out of range: " + absoluteIndex;
+                }
+                var idx = absoluteIndex - line.start;
+                return new Text.CharacterReference(line.content[idx], new Razor.SourceLocation(absoluteIndex, line.index, idx));
+            };
+            LineTrackingStringBuffer.prototype.findLine = function (absoluteIndex) {
+                var selected = null;
+                if (this._currentLine != null) {
+                    if (this._currentLine.contains(absoluteIndex)) {
+                        selected = this._currentLine;
+                    }
+                    else if (absoluteIndex > this._currentLine.index && this._currentLine.index + 1 < this._lines.length) {
+                        selected = this.scanLines(absoluteIndex, this._currentLine.index);
+                    }
+                }
+                if (selected === null) {
+                    selected = this.scanLines(absoluteIndex, 0);
+                }
+                this._currentLine = selected;
+                return selected;
+            };
+            LineTrackingStringBuffer.prototype.scanLines = function (absoluteIndex, start) {
+                for (var i = 0; i < this._lines.length; i++) {
+                    var idx = (i + start) % this._lines.length;
+                    if (this._lines[idx].contains(absoluteIndex)) {
+                        return this._lines[idx];
+                    }
+                }
+                return null;
+            };
+            LineTrackingStringBuffer.prototype.pushNewLine = function () {
+                this._endLine = new Text.TextLine(this._endLine.end, this._endLine.index + 1);
+                this._lines.push(this._endLine);
+            };
+            return LineTrackingStringBuffer;
+        })();
+        Text.LineTrackingStringBuffer = LineTrackingStringBuffer;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
+/// <reference path="TextReader.ts" />
+/// <reference path="ITextBuffer.ts" />
+/// <reference path="ITextDocument.ts" />
+/// <reference path="../SourceLocation.ts" />
+/// <reference path="LineTrackingStringBuffer.ts" />
+/// <reference path="CharacterReference.ts" />
+var Razor;
+(function (Razor) {
+    var Text;
+    (function (Text) {
+        var EOF = -1;
+        var SeekableTextReader = (function (_super) {
+            __extends(SeekableTextReader, _super);
+            function SeekableTextReader(content) {
+                _super.call(this);
+                this._position = 0;
+                this._buffer = new Text.LineTrackingStringBuffer();
+                this._location = Razor.SourceLocation.Zero;
+                if (content instanceof Text.TextReader) {
+                    content = content.readToEnd();
+                }
+                else if (typeof content === "object") {
+                    content = content.readToEnd();
+                }
+                this._buffer.append(content);
+                this.updateState();
+            }
+            Object.defineProperty(SeekableTextReader.prototype, "buffer", {
+                get: function () {
+                    return this._buffer;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(SeekableTextReader.prototype, "location", {
+                get: function () {
+                    return this._location;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(SeekableTextReader.prototype, "length", {
+                get: function () {
+                    return this._buffer.length;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(SeekableTextReader.prototype, "position", {
+                get: function () {
+                    return this._position;
+                },
+                set: function (value) {
+                    if (this._position !== value) {
+                        this._position = value;
+                        this.updateState();
+                    }
+                },
+                enumerable: true,
+                configurable: true
+            });
+            SeekableTextReader.prototype.beginLookahead = function () {
+                var _this = this;
+                var start = this.position;
+                return new Text.LookaheadToken(function () { return _this.position = start; });
+            };
+            SeekableTextReader.prototype.peek = function () {
+                if (!this._current) {
+                    return EOF;
+                }
+                return this._current;
+            };
+            SeekableTextReader.prototype.read = function (buffer, index, count) {
+                if (arguments.length === 3) {
+                    return _super.prototype.read.call(this, buffer, index, count);
+                }
+                if (!this._current) {
+                    return EOF;
+                }
+                var chr = this._current;
+                this._position++;
+                this.updateState();
+                return chr;
+            };
+            SeekableTextReader.prototype.seek = function (count) {
+                this.position += count;
+            };
+            SeekableTextReader.prototype.updateState = function () {
+                if (this._position < this._buffer.length) {
+                    var ref = this._buffer.charAt(this._position);
+                    this._current = ref.character;
+                    this._location = ref.location;
+                }
+                else if (this._buffer.length === 0) {
+                    this._current = null;
+                    this._location = Razor.SourceLocation.Zero;
+                }
+                else {
+                    this._current = null;
+                    this._location = this._buffer.endLocation;
+                }
+            };
+            SeekableTextReader.prototype.toDocument = function () {
+                return this;
+            };
+            return SeekableTextReader;
+        })(Text.TextReader);
+        Text.SeekableTextReader = SeekableTextReader;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../Text/ITextBuffer.ts" />
+/// <reference path="../Text/ITextDocument.ts" />
+/// <reference path="../Text/LookaheadToken.ts" />
+/// <reference path="../Text/SeekableTextReader.ts" />
+var Razor;
+(function (Razor) {
+    var Tests;
+    (function (Tests) {
+        var LookaheadToken = Razor.Text.LookaheadToken;
+        var SeekableTextReader = Razor.Text.SeekableTextReader;
+        var EOF = -1;
+        var StringTextBuffer = (function () {
+            function StringTextBuffer(buffer) {
+                this._buffer = buffer || '';
+                this._position = 0;
+                this._length = this._buffer.length;
+            }
+            Object.defineProperty(StringTextBuffer.prototype, "length", {
+                get: function () {
+                    return this._length;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(StringTextBuffer.prototype, "position", {
+                get: function () {
+                    return this._position;
+                },
+                set: function (value) {
+                    this._position = value;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            StringTextBuffer.prototype.beginLookahead = function () {
+                var _this = this;
+                var start = this.position;
+                return new LookaheadToken(function () { return _this.position = start; });
+            };
+            StringTextBuffer.prototype.peek = function () {
+                if (this.position >= this._buffer.length) {
+                    return EOF;
+                }
+                return this._buffer[this.position];
+            };
+            StringTextBuffer.prototype.read = function () {
+                if (this.position >= this._buffer.length) {
+                    return EOF;
+                }
+                return this._buffer[this.position++];
+            };
+            StringTextBuffer.prototype.readToEnd = function () {
+                return this._buffer.substr(this.position);
+            };
+            StringTextBuffer.prototype.seek = function (count) {
+                this.position += count;
+            };
+            StringTextBuffer.prototype.toDocument = function () {
+                return new SeekableTextReader(this);
+            };
+            return StringTextBuffer;
+        })();
+        Tests.StringTextBuffer = StringTextBuffer;
+    })(Tests = Razor.Tests || (Razor.Tests = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../SourceLocation.ts" />
+var Razor;
+(function (Razor) {
+    var Text;
+    (function (Text) {
+        var BacktrackContext = (function () {
+            function BacktrackContext(location, bufferIndex) {
+                this.location = location;
+                this.bufferIndex = bufferIndex;
+                this.bufferIndex = this.bufferIndex || 0;
+            }
+            return BacktrackContext;
+        })();
+        Text.BacktrackContext = BacktrackContext;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
 /// <reference path="TextReader.ts" />
 /// <reference path="../SourceLocation.ts" />
 /// <reference path="../Internals/IDisposable.ts" />
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    __.prototype = b.prototype;
-    d.prototype = new __();
-};
 var Razor;
 (function (Razor) {
     var Text;
@@ -382,10 +777,12 @@ var Razor;
         Text.LookaheadTextReader = LookaheadTextReader;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
+/// <reference path="../Internals/Environment.ts" />
 var Razor;
 (function (Razor) {
     var Text;
     (function (Text) {
+        var Environment = Razor.Environment;
         var StringBuilder = (function () {
             function StringBuilder(content) {
                 if (!!content) {
@@ -418,6 +815,9 @@ var Razor;
                     this.appendCore(content[0], 0, 1);
                 }
                 return this;
+            };
+            StringBuilder.prototype.appendLine = function (content) {
+                return this.append((content || '') + Environment.NewLine);
             };
             StringBuilder.prototype.appendCore = function (content, startIndex, count) {
                 for (var i = startIndex; i < content.length && i < (startIndex + count); i++) {
@@ -576,150 +976,6 @@ var Razor;
 (function (Razor) {
     var Text;
     (function (Text) {
-        var CharacterReference = (function () {
-            function CharacterReference(character, location) {
-                this._char = character;
-                this._loc = location;
-            }
-            Object.defineProperty(CharacterReference.prototype, "character", {
-                get: function () {
-                    return this._char;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(CharacterReference.prototype, "location", {
-                get: function () {
-                    return this._loc;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            return CharacterReference;
-        })();
-        Text.CharacterReference = CharacterReference;
-    })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../SourceLocation.ts" />
-/// <reference path="ITextBuffer.ts" />
-var Razor;
-(function (Razor) {
-    var Text;
-    (function (Text) {
-        var TextLine = (function () {
-            function TextLine(start, index, content) {
-                this.start = start;
-                this.index = index;
-                this.content = content;
-                if (!content) {
-                    this.content = '';
-                }
-            }
-            Object.defineProperty(TextLine.prototype, "end", {
-                get: function () {
-                    return this.start + this.length;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextLine.prototype, "length", {
-                get: function () {
-                    return this.content.length;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            TextLine.prototype.contains = function (index) {
-                return index < this.end && index >= this.start;
-            };
-            return TextLine;
-        })();
-        Text.TextLine = TextLine;
-    })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
-/// <reference path="CharacterReference.ts" />
-/// <reference path="TextLine.ts" />
-/// <reference path="../SourceLocation.ts" />
-/// <reference path="../Parser/ParserHelpers.ts" />
-var Razor;
-(function (Razor) {
-    var Text;
-    (function (Text) {
-        var ParserHelpers = Razor.Parser.ParserHelpers;
-        var LineTrackingStringBuffer = (function () {
-            function LineTrackingStringBuffer() {
-                this._endLine = new Text.TextLine(0, 0);
-                this._lines = [this._endLine];
-            }
-            Object.defineProperty(LineTrackingStringBuffer.prototype, "endLocation", {
-                get: function () {
-                    return new Razor.SourceLocation(this.length, this._lines.length - 1, this._lines[this._lines.length - 1].length);
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(LineTrackingStringBuffer.prototype, "length", {
-                get: function () {
-                    return this._endLine.end;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            LineTrackingStringBuffer.prototype.append = function (content) {
-                for (var i = 0; i < content.length; i++) {
-                    this._lines[this._lines.length - 1].content += content[i];
-                    if ((content[i] === '\r' && (i + 1 === content.length || content[i + 1] !== '\n')) || (content[i] !== '\r' && ParserHelpers.isNewLine(content[i]))) {
-                        this.pushNewLine();
-                    }
-                }
-            };
-            LineTrackingStringBuffer.prototype.charAt = function (absoluteIndex) {
-                var line = this.findLine(absoluteIndex);
-                if (line === null) {
-                    throw "Argument out of range: " + absoluteIndex;
-                }
-                var idx = absoluteIndex - line.start;
-                return new Text.CharacterReference(line.content[idx], new Razor.SourceLocation(absoluteIndex, line.index, idx));
-            };
-            LineTrackingStringBuffer.prototype.findLine = function (absoluteIndex) {
-                var selected = null;
-                if (this._currentLine != null) {
-                    if (this._currentLine.contains(absoluteIndex)) {
-                        selected = this._currentLine;
-                    }
-                    else if (absoluteIndex > this._currentLine.index && this._currentLine.index + 1 < this._lines.length) {
-                        selected = this.scanLines(absoluteIndex, this._currentLine.index);
-                    }
-                }
-                if (selected === null) {
-                    selected = this.scanLines(absoluteIndex, 0);
-                }
-                this._currentLine = selected;
-                return selected;
-            };
-            LineTrackingStringBuffer.prototype.scanLines = function (absoluteIndex, start) {
-                for (var i = 0; i < this._lines.length; i++) {
-                    var idx = (i + start) % this._lines.length;
-                    if (this._lines[idx].contains(absoluteIndex)) {
-                        return this._lines[idx];
-                    }
-                }
-                return null;
-            };
-            LineTrackingStringBuffer.prototype.pushNewLine = function () {
-                this._endLine = new Text.TextLine(this._endLine.end, this._endLine.index + 1);
-                this._lines.push(this._endLine);
-            };
-            return LineTrackingStringBuffer;
-        })();
-        Text.LineTrackingStringBuffer = LineTrackingStringBuffer;
-    })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../SourceLocation.ts" />
-var Razor;
-(function (Razor) {
-    var Text;
-    (function (Text) {
         var LocationTagged = (function () {
             function LocationTagged(value, locationOrOffset, line, col) {
                 this._location = Razor.SourceLocation.Undefined;
@@ -765,126 +1021,6 @@ var Razor;
             return LocationTagged;
         })();
         Text.LocationTagged = LocationTagged;
-    })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../Internals/DisposableAction.ts" />
-var Razor;
-(function (Razor) {
-    var Text;
-    (function (Text) {
-        var LookaheadToken = (function (_super) {
-            __extends(LookaheadToken, _super);
-            function LookaheadToken(action, context) {
-                _super.call(this, action, context);
-                this._accepted = false;
-            }
-            LookaheadToken.prototype.dispose = function () {
-                if (!this._accepted) {
-                    _super.prototype.dispose.call(this);
-                }
-            };
-            return LookaheadToken;
-        })(Razor.DisposableAction);
-        Text.LookaheadToken = LookaheadToken;
-    })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
-/// <reference path="TextReader.ts" />
-/// <reference path="ITextBuffer.ts" />
-/// <reference path="ITextDocument.ts" />
-/// <reference path="../SourceLocation.ts" />
-/// <reference path="LineTrackingStringBuffer.ts" />
-/// <reference path="CharacterReference.ts" />
-var Razor;
-(function (Razor) {
-    var Text;
-    (function (Text) {
-        var EOF = -1;
-        var SeekableTextReader = (function (_super) {
-            __extends(SeekableTextReader, _super);
-            function SeekableTextReader(content) {
-                _super.call(this);
-                this._position = 0;
-                this._buffer = new Text.LineTrackingStringBuffer();
-                this._location = Razor.SourceLocation.Zero;
-                if (content instanceof Text.TextReader) {
-                    content = content.readToEnd();
-                }
-                else if (!(content instanceof String)) {
-                    content = content.readToEnd();
-                }
-                this._buffer.append(content);
-                this.updateState();
-            }
-            Object.defineProperty(SeekableTextReader.prototype, "buffer", {
-                get: function () {
-                    return this._buffer;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(SeekableTextReader.prototype, "location", {
-                get: function () {
-                    return this._location;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(SeekableTextReader.prototype, "length", {
-                get: function () {
-                    return this._buffer.length;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(SeekableTextReader.prototype, "position", {
-                get: function () {
-                    return this._position;
-                },
-                set: function (value) {
-                    if (this._position !== value) {
-                        this._position = value;
-                        this.updateState();
-                    }
-                },
-                enumerable: true,
-                configurable: true
-            });
-            SeekableTextReader.prototype.peek = function () {
-                if (!this._current) {
-                    return EOF;
-                }
-                return this._current;
-            };
-            SeekableTextReader.prototype.read = function (buffer, index, count) {
-                if (arguments.length === 3) {
-                    return _super.prototype.read.call(this, buffer, index, count);
-                }
-                if (!this._current) {
-                    return EOF;
-                }
-                var chr = this._current;
-                this._position++;
-                this.updateState();
-                return chr;
-            };
-            SeekableTextReader.prototype.updateState = function () {
-                if (this._position < this._buffer.length) {
-                    var ref = this._buffer.charAt(this._position);
-                    this._current = ref.character;
-                    this._location = ref.location;
-                }
-                else if (this._buffer.length === 0) {
-                    this._current = null;
-                    this._location = Razor.SourceLocation.Zero;
-                }
-                else {
-                    this._current = null;
-                    this._location = this._buffer.endLocation;
-                }
-            };
-            return SeekableTextReader;
-        })(Text.TextReader);
-        Text.SeekableTextReader = SeekableTextReader;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
 /// <reference path="../SourceLocation.ts" />
@@ -1286,6 +1422,11 @@ var Razor;
                 enumerable: true,
                 configurable: true
             });
+            TextDocumentReader.prototype.beginLookahead = function () {
+                var _this = this;
+                var start = this.position;
+                return new Text.LookaheadToken(function () { return _this.position = start; });
+            };
             TextDocumentReader.prototype.peek = function () {
                 return this._document.peek();
             };
@@ -1295,9 +1436,609 @@ var Razor;
                 }
                 return this._document.read();
             };
+            TextDocumentReader.prototype.seek = function (count) {
+                this.position += count;
+            };
+            TextDocumentReader.prototype.toDocument = function () {
+                return this;
+            };
             return TextDocumentReader;
         })(Text.TextReader);
         Text.TextDocumentReader = TextDocumentReader;
     })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../../SourceLocation.ts" />
+/// <reference path="ISymbol.ts" />
+/// <reference path="../../SourceLocation.ts" />
+/// <reference path="../../RazorError.ts" />
+/// <reference path="../../Text/LocationTagged.ts" />
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var Symbols;
+        (function (Symbols) {
+            var LocationTagged = Razor.Text.LocationTagged;
+            var SymbolBase = (function () {
+                function SymbolBase(start, content, type, errors) {
+                    this.start = start;
+                    this.content = content;
+                    this.type = type;
+                    this.errors = errors;
+                }
+                SymbolBase.prototype.changeStart = function (newStart) {
+                    this.start = newStart;
+                };
+                SymbolBase.prototype.getContent = function () {
+                    return new LocationTagged(this.content, this.start);
+                };
+                SymbolBase.prototype.equals = function (other) {
+                    if (!other) {
+                        return false;
+                    }
+                    return this.start.equals(other.start) &&
+                        this.content === other.content &&
+                        this.type === other.type;
+                };
+                SymbolBase.prototype.offsetStart = function (documentStart) {
+                    this.start = Razor.SourceLocation.add(documentStart, this.start);
+                };
+                SymbolBase.prototype.toString = function () {
+                    return [this.start.toString(), ' ', this.type, ' - ', this.content].join('');
+                };
+                return SymbolBase;
+            })();
+            Symbols.SymbolBase = SymbolBase;
+        })(Symbols = Tokenizer.Symbols || (Tokenizer.Symbols = {}));
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var Symbols;
+        (function (Symbols) {
+            (function (HtmlSymbolType) {
+                HtmlSymbolType[HtmlSymbolType["Unknown"] = 0] = "Unknown";
+                HtmlSymbolType[HtmlSymbolType["Text"] = 1] = "Text";
+                HtmlSymbolType[HtmlSymbolType["WhiteSpace"] = 2] = "WhiteSpace";
+                HtmlSymbolType[HtmlSymbolType["NewLine"] = 3] = "NewLine";
+                HtmlSymbolType[HtmlSymbolType["OpenAngle"] = 4] = "OpenAngle";
+                HtmlSymbolType[HtmlSymbolType["Bang"] = 5] = "Bang";
+                HtmlSymbolType[HtmlSymbolType["ForwardSlash"] = 6] = "ForwardSlash";
+                HtmlSymbolType[HtmlSymbolType["QuestionMark"] = 7] = "QuestionMark";
+                HtmlSymbolType[HtmlSymbolType["DoubleHyphen"] = 8] = "DoubleHyphen";
+                HtmlSymbolType[HtmlSymbolType["LeftBracket"] = 9] = "LeftBracket";
+                HtmlSymbolType[HtmlSymbolType["CloseAngle"] = 10] = "CloseAngle";
+                HtmlSymbolType[HtmlSymbolType["RightBracket"] = 11] = "RightBracket";
+                HtmlSymbolType[HtmlSymbolType["Equals"] = 12] = "Equals";
+                HtmlSymbolType[HtmlSymbolType["DoubleQuote"] = 13] = "DoubleQuote";
+                HtmlSymbolType[HtmlSymbolType["SingleQuote"] = 14] = "SingleQuote";
+                HtmlSymbolType[HtmlSymbolType["Transition"] = 15] = "Transition";
+                HtmlSymbolType[HtmlSymbolType["Colon"] = 16] = "Colon";
+                HtmlSymbolType[HtmlSymbolType["RazorComment"] = 17] = "RazorComment";
+                HtmlSymbolType[HtmlSymbolType["RazorCommentStar"] = 18] = "RazorCommentStar";
+                HtmlSymbolType[HtmlSymbolType["RazorCommentTransition"] = 19] = "RazorCommentTransition";
+            })(Symbols.HtmlSymbolType || (Symbols.HtmlSymbolType = {}));
+            var HtmlSymbolType = Symbols.HtmlSymbolType;
+        })(Symbols = Tokenizer.Symbols || (Tokenizer.Symbols = {}));
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+/// <reference path="SymbolBase.ts" />
+/// <reference path="HtmlSymbolType.ts" />
+/// <reference path="../../SourceLocation.ts" />
+/// <reference path="../../RazorError.ts" />
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var Symbols;
+        (function (Symbols) {
+            var HtmlSymbol = (function (_super) {
+                __extends(HtmlSymbol, _super);
+                function HtmlSymbol(start, content, type, errors) {
+                    _super.call(this, start, content, type, errors || []);
+                }
+                return HtmlSymbol;
+            })(Symbols.SymbolBase);
+            Symbols.HtmlSymbol = HtmlSymbol;
+        })(Symbols = Tokenizer.Symbols || (Tokenizer.Symbols = {}));
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+/// <reference path="Symbols/ISymbol.ts" />
+/// <reference path="../Text/ITextDocument.ts" />
+/// <reference path="../StateMachine.ts" />
+/// <reference path="ITokenizer.ts" />
+/// <reference path="../Text/ITextDocument.ts" />
+/// <reference path="../Text/TextDocumentReader.ts" />
+/// <reference path="../Text/StringBuilder.ts" />
+/// <reference path="../RazorError.ts" />
+/// <reference path="Symbols/SymbolBase.ts" />
+/// <reference path="Symbols/ISymbol.ts" />
+/// <reference path="../Internals/Using.ts" />
+/// <reference path="../Parser/ParserHelpers.ts" />
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer_1) {
+        var TextDocumentReader = Razor.Text.TextDocumentReader;
+        var StringBuilder = Razor.Text.StringBuilder;
+        var using = Razor.Using;
+        var ParserHelpers = Razor.Parser.ParserHelpers;
+        var EOF = -1;
+        var Tokenizer = (function (_super) {
+            __extends(Tokenizer, _super);
+            function Tokenizer(source) {
+                _super.call(this);
+                this._source = new TextDocumentReader(source);
+                this._buffer = new StringBuilder();
+                this._currentErrors = [];
+                this.startSymbol();
+            }
+            Object.defineProperty(Tokenizer.prototype, "buffer", {
+                get: function () {
+                    return this._buffer;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Tokenizer.prototype, "currentCharacter", {
+                get: function () {
+                    var peek = this.source.peek();
+                    return (peek === EOF) ? '\0' : peek;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Tokenizer.prototype, "currentErrors", {
+                get: function () {
+                    return this._currentErrors;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Tokenizer.prototype, "currentLocation", {
+                get: function () {
+                    return this.source.location;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Tokenizer.prototype, "currentStart", {
+                get: function () {
+                    return this._currentStart;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Tokenizer.prototype, "endOfFile", {
+                get: function () {
+                    return this.source.peek() === EOF;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Tokenizer.prototype, "haveContent", {
+                get: function () {
+                    return this.buffer.length > 0;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Tokenizer.prototype, "razorCommentStarType", {
+                get: function () { return null; },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Tokenizer.prototype, "razorCommentType", {
+                get: function () { return null; },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Tokenizer.prototype, "razorCommentTransitionType", {
+                get: function () { return null; },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Tokenizer.prototype, "source", {
+                get: function () {
+                    return this._source;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(Tokenizer.prototype, "sourceDocument", {
+                get: function () {
+                    return this.source;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Tokenizer.prototype.afterRazorCommentTransition = function () {
+                if (this.currentCharacter !== '*') {
+                    return this.transition(this.startState);
+                }
+                this.takeCurrent();
+                return this.transition(this.endSymbol(this.razorCommentStarType), this.razorCommentBody);
+            };
+            Tokenizer.prototype.at = function (expected, caseSensitive) {
+                return this.lookahead(expected, false, caseSensitive);
+            };
+            Tokenizer.prototype.createSymbol = function (start, content, type, errors) {
+                return null;
+            };
+            Tokenizer.prototype.charOrWhiteSpace = function (character) {
+                return function (c) { return c === character || ParserHelpers.isWhiteSpace(c) || ParserHelpers.isNewLine(c); };
+            };
+            Tokenizer.prototype.endSymbol = function (startOrType, type) {
+                if (startOrType instanceof Razor.SourceLocation) {
+                    var sym = null;
+                    if (this.haveContent) {
+                        sym = this.createSymbol(startOrType, this.buffer.toString(), type, this.currentErrors.slice(0));
+                    }
+                    this.startSymbol();
+                    return sym;
+                }
+                return this.endSymbol(this.currentStart, startOrType);
+            };
+            Tokenizer.prototype.lookahead = function (expected, takeIfMatch, caseSensitive) {
+                var filter = function (c) { return c; };
+                if (!caseSensitive) {
+                    filter = function (c) { return c.toLowerCase(); };
+                }
+                if (expected.length === 0 || filter(this.currentCharacter) != filter(expected[0])) {
+                    return false;
+                }
+                var oldBuffer;
+                if (takeIfMatch) {
+                    oldBuffer = this.buffer.toString();
+                }
+                var that = this;
+                var lookahead = this.source.beginLookahead();
+                using(this, lookahead, function (disposable) {
+                    for (var i = 0; i < expected.length; i++) {
+                        if (filter(that.currentCharacter) !== filter(expected[i])) {
+                            if (takeIfMatch) {
+                                that.buffer.clear();
+                                that.buffer.append(oldBuffer);
+                            }
+                            return false;
+                        }
+                        if (takeIfMatch) {
+                            that.takeCurrent();
+                        }
+                        else {
+                            that.moveNext();
+                        }
+                    }
+                    if (takeIfMatch) {
+                        lookahead.accept();
+                    }
+                });
+                return true;
+            };
+            Tokenizer.prototype.moveNext = function () {
+                this.source.read();
+            };
+            Tokenizer.prototype.nextSymbol = function () {
+                this.startSymbol();
+                if (this.endOfFile) {
+                    return null;
+                }
+                var sym = this.turn() || null;
+                return sym;
+            };
+            Tokenizer.prototype.peek = function () {
+                var result;
+                var that = this;
+                using(this, this.source.beginLookahead(), function () {
+                    that.moveNext();
+                    result = that.currentCharacter;
+                });
+                return result;
+            };
+            Tokenizer.prototype.razorCommentBody = function () {
+                var _this = this;
+                var that = this;
+                this.takeUntil(function (c) { return c === '*'; });
+                if (this.currentCharacter === '*') {
+                    var star = this.currentCharacter;
+                    var start = this.currentLocation;
+                    this.moveNext();
+                    if (!this.endOfFile && this.currentCharacter === '@') {
+                        var next = (function () {
+                            _this.buffer.append(star);
+                            return _this.transition(_this.endSymbol(start, _this.razorCommentStarType), (function () {
+                                if (_this.currentCharacter !== '@') {
+                                    return _this.transition(_this.startState);
+                                }
+                                _this.takeCurrent();
+                                return _this.transition(_this.endSymbol(_this.razorCommentTransitionType), _this.startState);
+                            }));
+                        });
+                        if (this.haveContent) {
+                            return this.transition(this.endSymbol(this.razorCommentType), next);
+                        }
+                        return this.transition(next);
+                    }
+                    else {
+                        this.buffer.append(star);
+                        return this.stay();
+                    }
+                }
+                return this.transition(this.endSymbol(this.razorCommentType), this.startState);
+            };
+            Tokenizer.prototype.reset = function () {
+                this.currentState = this.startState;
+            };
+            Tokenizer.prototype.resumeSymbol = function (previous) {
+                if (previous.start.absoluteIndex + previous.content.length !== this.currentStart.absoluteIndex) {
+                    throw "Cannot resume symbol unless it is the previous symbol";
+                }
+                this._currentStart = previous.start;
+                var newContent = this.buffer.toString();
+                this.buffer.clear();
+                this.buffer.append(previous.content);
+                this.buffer.append(newContent);
+            };
+            Tokenizer.prototype.single = function (type) {
+                this.takeCurrent();
+                return this.endSymbol(type);
+            };
+            Tokenizer.prototype.startSymbol = function () {
+                this.buffer.clear();
+                this._currentStart = this.currentLocation;
+                this._currentErrors = [];
+            };
+            Tokenizer.prototype.takeAll = function (expected, caseSensitive) {
+                return this.lookahead(expected, true, caseSensitive);
+            };
+            Tokenizer.prototype.takeCurrent = function () {
+                if (this.endOfFile) {
+                    return;
+                }
+                this.buffer.append(this.currentCharacter);
+                this.moveNext();
+            };
+            Tokenizer.prototype.takeString = function (input, caseSensitive) {
+                var position = 0;
+                var filter = function (c) { return c; };
+                if (caseSensitive) {
+                    filter = function (c) { return c.toLowerCase(); };
+                }
+                while (!this.endOfFile && position < input.length && filter(this.currentCharacter) == filter(input[position++])) {
+                    this.takeCurrent();
+                }
+                return (position === input.length);
+            };
+            Tokenizer.prototype.takeUntil = function (predicate) {
+                while (!this.endOfFile && !predicate(this.currentCharacter)) {
+                    this.takeCurrent();
+                }
+                return !this.endOfFile;
+            };
+            return Tokenizer;
+        })(Razor.StateMachine);
+        Tokenizer_1.Tokenizer = Tokenizer;
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+/// <reference path="Symbols/HtmlSymbol.ts" />
+/// <reference path="Symbols/HtmlSymbolType.ts" />
+/// <reference path="Tokenizer.ts" />
+/// <reference path="../Text/ITextDocument.ts" />
+/// <reference path="../Text/SeekableTextReader.ts" />
+/// <reference path="../Internals/Using.ts" />
+/// <reference path="../Parser/ParserHelpers.ts" />
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var HtmlSymbol = Razor.Tokenizer.Symbols.HtmlSymbol;
+        var HtmlSymbolType = Razor.Tokenizer.Symbols.HtmlSymbolType;
+        var SeekableTextReader = Razor.Text.SeekableTextReader;
+        var ParserHelpers = Razor.Parser.ParserHelpers;
+        var using = Razor.Using;
+        var transitionChar = '@';
+        var HtmlTokenizer = (function (_super) {
+            __extends(HtmlTokenizer, _super);
+            function HtmlTokenizer(source) {
+                _super.call(this, source);
+                this.currentState = this.data;
+            }
+            Object.defineProperty(HtmlTokenizer.prototype, "startState", {
+                get: function () {
+                    return this.data;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(HtmlTokenizer.prototype, "razorCommentStarType", {
+                get: function () { return HtmlSymbolType.RazorCommentStar; },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(HtmlTokenizer.prototype, "razorCommentType", {
+                get: function () { return HtmlSymbolType.RazorComment; },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(HtmlTokenizer.prototype, "razorCommentTransitionType", {
+                get: function () { return HtmlSymbolType.RazorCommentTransition; },
+                enumerable: true,
+                configurable: true
+            });
+            HtmlTokenizer.prototype.atSymbol = function () {
+                return this.currentCharacter === '<' ||
+                    this.currentCharacter === '!' ||
+                    this.currentCharacter === '/' ||
+                    this.currentCharacter === '?' ||
+                    this.currentCharacter === '[' ||
+                    this.currentCharacter === '>' ||
+                    this.currentCharacter === ']' ||
+                    this.currentCharacter === '=' ||
+                    this.currentCharacter === '"' ||
+                    this.currentCharacter === "'" ||
+                    this.currentCharacter === '@' ||
+                    (this.currentCharacter === '-' && this.peek() === '-');
+            };
+            HtmlTokenizer.prototype.createSymbol = function (start, content, type, errors) {
+                return new HtmlSymbol(start, content, type, errors);
+            };
+            HtmlTokenizer.prototype.data = function () {
+                var _this = this;
+                if (ParserHelpers.isWhiteSpace(this.currentCharacter)) {
+                    return this.stay(this.whiteSpace());
+                }
+                else if (ParserHelpers.isNewLine(this.currentCharacter)) {
+                    return this.stay(this.newLine());
+                }
+                else if (this.currentCharacter === transitionChar) {
+                    this.takeCurrent();
+                    if (this.currentCharacter === '*') {
+                        return this.transition(this.endSymbol(HtmlSymbolType.RazorCommentTransition), this.afterRazorCommentTransition);
+                    }
+                    else if (this.currentCharacter === transitionChar) {
+                        return this.transition(this.endSymbol(HtmlSymbolType.Transition), (function () {
+                            _this.takeCurrent();
+                            return _this.transition(_this.endSymbol(HtmlSymbolType.Transition), _this.data);
+                        }));
+                    }
+                    return this.stay(this.endSymbol(HtmlSymbolType.Transition));
+                }
+                else if (this.atSymbol()) {
+                    return this.stay(this.symbol());
+                }
+                else {
+                    return this.transition(this.text);
+                }
+            };
+            HtmlTokenizer.prototype.newLine = function () {
+                var check = (this.currentCharacter === '\r');
+                this.takeCurrent();
+                if (check && (this.currentCharacter === '\n')) {
+                    this.takeCurrent();
+                }
+                return this.endSymbol(HtmlSymbolType.NewLine);
+            };
+            HtmlTokenizer.prototype.symbol = function () {
+                var sym = this.currentCharacter;
+                this.takeCurrent();
+                switch (sym) {
+                    case '<': return this.endSymbol(HtmlSymbolType.OpenAngle);
+                    case '!': return this.endSymbol(HtmlSymbolType.Bang);
+                    case '/': return this.endSymbol(HtmlSymbolType.ForwardSlash);
+                    case '?': return this.endSymbol(HtmlSymbolType.QuestionMark);
+                    case '[': return this.endSymbol(HtmlSymbolType.LeftBracket);
+                    case '>': return this.endSymbol(HtmlSymbolType.CloseAngle);
+                    case ']': return this.endSymbol(HtmlSymbolType.RightBracket);
+                    case '=': return this.endSymbol(HtmlSymbolType.Equals);
+                    case '"': return this.endSymbol(HtmlSymbolType.DoubleQuote);
+                    case "'": return this.endSymbol(HtmlSymbolType.SingleQuote);
+                    case '-':
+                        {
+                            this.takeCurrent();
+                            return this.endSymbol(HtmlSymbolType.DoubleHyphen);
+                        }
+                    default:
+                        {
+                            return this.endSymbol(HtmlSymbolType.Unknown);
+                        }
+                }
+            };
+            HtmlTokenizer.prototype.text = function () {
+                var prev = '\0';
+                while (!this.endOfFile && !ParserHelpers.isWhiteSpaceOrNewLine(this.currentCharacter) && !this.atSymbol()) {
+                    prev = this.currentCharacter;
+                    this.takeCurrent();
+                }
+                if (this.currentCharacter === transitionChar) {
+                    var next = this.peek();
+                    if (ParserHelpers.isLetterOrDecimalDigit(prev) && ParserHelpers.isLetterOrDecimalDigit(next)) {
+                        this.takeCurrent();
+                        return this.stay();
+                    }
+                }
+                return this.transition(this.endSymbol(HtmlSymbolType.Text), this.data);
+            };
+            HtmlTokenizer.tokenize = function (content) {
+                var reader = new SeekableTextReader(content);
+                var symbols = [];
+                using(reader, function () {
+                    var tok = new HtmlTokenizer(reader);
+                    var sym;
+                    while ((sym = tok.nextSymbol()) !== null) {
+                        symbols.push(sym);
+                    }
+                });
+                return symbols;
+            };
+            HtmlTokenizer.prototype.whiteSpace = function () {
+                while (ParserHelpers.isWhiteSpace(this.currentCharacter)) {
+                    this.takeCurrent();
+                }
+                return this.endSymbol(HtmlSymbolType.WhiteSpace);
+            };
+            return HtmlTokenizer;
+        })(Tokenizer.Tokenizer);
+        Tokenizer.HtmlTokenizer = HtmlTokenizer;
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+/// <reference path="Symbols/ISymbol.ts" />
+/// <reference path="ITokenizer.ts" />
+/// <reference path="../Text/ITextDocument.ts" />
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var TokenizerView = (function () {
+            function TokenizerView(tokenizer) {
+                this._tokenizer = tokenizer;
+            }
+            Object.defineProperty(TokenizerView.prototype, "current", {
+                get: function () {
+                    return this._current;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TokenizerView.prototype, "endOfFile", {
+                get: function () {
+                    return this._endOfFile;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TokenizerView.prototype, "source", {
+                get: function () {
+                    return this.tokenizer.sourceDocument;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TokenizerView.prototype, "tokenizer", {
+                get: function () {
+                    return this._tokenizer;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            TokenizerView.prototype.next = function () {
+                this._current = this.tokenizer.nextSymbol();
+                this._endOfFile = !this._current;
+                return !this._endOfFile;
+            };
+            TokenizerView.prototype.putBack = function (symbol) {
+                if (this.source.position !== symbol.start.absoluteIndex + symbol.content.length) {
+                    throw "Unable to put symbol back as we've already moved passed this symbol.";
+                }
+                this.source.position -= symbol.content.length;
+                this._current = null;
+                this._endOfFile = this.source.position >= this.source.length;
+                this.tokenizer.reset();
+            };
+            return TokenizerView;
+        })();
+        Tokenizer.TokenizerView = TokenizerView;
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
 })(Razor || (Razor = {}));
 //# sourceMappingURL=razor.js.map

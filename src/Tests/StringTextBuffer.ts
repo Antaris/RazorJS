@@ -1,8 +1,14 @@
 /// <reference path="../Text/ITextBuffer.ts" />
+/// <reference path="../Text/ITextDocument.ts" />
+/// <reference path="../Text/LookaheadToken.ts" />
+/// <reference path="../Text/SeekableTextReader.ts" />
 
 namespace Razor.Tests
 {
   import ITextBuffer = Razor.Text.ITextBuffer;
+  import ITextDocument = Razor.Text.ITextDocument;
+  import LookaheadToken = Razor.Text.LookaheadToken;
+  import SeekableTextReader = Razor.Text.SeekableTextReader;
   
   var EOF = -1;
   
@@ -58,6 +64,17 @@ namespace Razor.Tests
     }
     
     /**
+     * Begins a lookahead operaiton on the buffer.
+     * @returns {LookaheadToken}
+     */
+    public beginLookahead(): LookaheadToken
+    {
+      var start = this.position;
+      return new LookaheadToken(() => this.position = start);
+    }
+    
+    
+    /**
      * Peeks at the next character in the buffer
      * @function
      * @returns {string|number}
@@ -93,6 +110,25 @@ namespace Razor.Tests
     public readToEnd(): string
     {
       return this._buffer.substr(this.position);
+    }
+    
+    /**
+     * Seeks the buffer
+     * @function
+     * @param {number} The number of characters to seek
+     */
+    public seek(count: number): void
+    {
+      this.position += count;
+    }
+    
+    /**
+     * Returns the current buffer as a text document.
+     * @returns {ITextDocument}
+     */
+    public toDocument(): ITextDocument
+    {
+      return new SeekableTextReader(this);
     }
   }
 }

@@ -23,7 +23,17 @@ namespace Razor.Text
     }
     
     /**
+     * Accepts the lookahead token
+     * @function
+     */
+    public accept(): void
+    {
+      this._accepted = true;
+    }
+    
+    /**
      * Disposes of the instance.
+     * @function
      */
     public dispose(): void
     {

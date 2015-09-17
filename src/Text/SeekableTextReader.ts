@@ -29,7 +29,7 @@ namespace Razor.Text
       {
         content = (<TextReader>content).readToEnd();
       }
-      else if (!(content instanceof String))
+      else if (typeof content === "object") // ITextBuffer
       {
         content = (<ITextBuffer>content).readToEnd();
       }
@@ -91,6 +91,16 @@ namespace Razor.Text
     }
     
     /**
+     * Begins a lookahead operaiton on the buffer.
+     * @returns {LookaheadToken}
+     */
+    public beginLookahead(): LookaheadToken
+    {
+      var start = this.position;
+      return new LookaheadToken(() => this.position = start);
+    }
+    
+    /**
      * Peeks at the next character in the buffer
      * @function
      * @returns {string|number}
@@ -132,6 +142,16 @@ namespace Razor.Text
     }
     
     /**
+     * Seeks the buffer
+     * @function
+     * @param {number} The number of characters to seek
+     */
+    public seek(count: number): void
+    {
+      this.position += count;
+    }
+    
+    /**
      * Updates the internal state of the reader.
      */
     private updateState(): void
@@ -152,6 +172,15 @@ namespace Razor.Text
         this._current = null;
         this._location = this._buffer.endLocation;
       }
+    }
+    
+    /**
+     * Returns the current buffer as a text document.
+     * @returns {ITextDocument}
+     */
+    public toDocument(): ITextDocument
+    {
+      return this;
     }
   }
 }

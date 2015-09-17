@@ -1,5 +1,9 @@
+/// <reference path="../Internals/Environment.ts" />
+
 namespace Razor.Text
 {
+  import Environment = Razor.Environment;
+  
   /**
    * A utility class for building string instances.
    * @class
@@ -65,6 +69,17 @@ namespace Razor.Text
         this.appendCore(content[0], 0, 1);
       }
       return this;
+    }
+    
+    /**
+     * Appends the given content followed by a new line to the string builder.
+     * @function
+     * @param {string} content - The content to append
+     * @returns {StringBuilder}
+     */
+    public appendLine(content: string): StringBuilder
+    {
+      return this.append((content || '') + Environment.NewLine);
     }
     
     private appendCore(content: string, startIndex: number, count: number)

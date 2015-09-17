@@ -1,3 +1,6 @@
+/// <reference path="LookaheadToken.ts" />
+/// <reference path="ITextDocument.ts" />"
+
 namespace Razor.Text
 {
   /**
@@ -19,6 +22,12 @@ namespace Razor.Text
     position: number;
     
     /**
+     * Begins a lookahead operation on the buffer.
+     * @returns {LookaheadToken}
+     */
+    beginLookahead(): LookaheadToken;
+    
+    /**
      * Peeks at the next character from the buffer without advancing the position.
      * @function
      * @returns {string|number}
@@ -38,5 +47,19 @@ namespace Razor.Text
      * @returns {string}
      */
     readToEnd(): string;
+    
+    /**
+     * Seeks to the buffer by the given number of characters.
+     * @function
+     * @param {number} count - The number of characters to seek.
+     */
+    seek(count: number): void;
+    
+    /**
+     * Returns the current buffer as a document
+     * @function
+     * @returns {ITextDocument}
+     */
+    toDocument(): ITextDocument;
   }
 }
