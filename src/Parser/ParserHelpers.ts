@@ -6,7 +6,31 @@ namespace Razor.Parser
    * Provides helper methods for parsing source
    */
   export class ParserHelpers
-  {
+  {    
+    /**
+     * Determines if the given value is a binary digit
+     * @function
+     * @static
+     * @param {string} value - The value to check
+     * @returns {boolean}
+     */
+    public static isBinaryDigit(value: string): boolean
+    {
+      return (value === '0' || value === '1');
+    }
+    
+    /**
+     * Determines if the given value is an octal digit
+     * @function
+     * @static
+     * @param {string} value - The value to check
+     * @returns {boolean}
+     */
+    public static isOctalDigit(value: string): boolean
+    {
+      return /[0-9]/.test(value);
+    }
+    
     /**
      * Determines if the given value is a decimal digit
      * @function
@@ -17,6 +41,18 @@ namespace Razor.Parser
     public static isDecimalDigit(value: string): boolean
     {
       return /[0-9]/.test(value);
+    }
+    
+    /**
+     * Determines if the given value is a hex digit
+     * @function
+     * @static
+     * @param {string} value - The value to check
+     * @returns {boolean}
+     */
+    public static isHexDigit(value: string): boolean
+    {
+      return /[0-9a-fA-F]/.test(value);
     }
     
     /**

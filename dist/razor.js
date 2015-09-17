@@ -16,8 +16,17 @@ var Razor;
         var ParserHelpers = (function () {
             function ParserHelpers() {
             }
+            ParserHelpers.isBinaryDigit = function (value) {
+                return (value === '0' || value === '1');
+            };
+            ParserHelpers.isOctalDigit = function (value) {
+                return /[0-9]/.test(value);
+            };
             ParserHelpers.isDecimalDigit = function (value) {
                 return /[0-9]/.test(value);
+            };
+            ParserHelpers.isHexDigit = function (value) {
+                return /[0-9a-fA-F]/.test(value);
             };
             ParserHelpers.isLetter = function (value) {
                 return /[a-zA-Z]/.test(value);
@@ -1466,6 +1475,13 @@ var Razor;
                     this.type = type;
                     this.errors = errors;
                 }
+                Object.defineProperty(SymbolBase.prototype, "typeName", {
+                    get: function () {
+                        return this.type.toString();
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
                 SymbolBase.prototype.changeStart = function (newStart) {
                     this.start = newStart;
                 };
@@ -1484,7 +1500,7 @@ var Razor;
                     this.start = Razor.SourceLocation.add(documentStart, this.start);
                 };
                 SymbolBase.prototype.toString = function () {
-                    return [this.start.toString(), ' ', this.type, ' - ', this.content].join('');
+                    return [this.start.toString(), ' ', this.typeName, ' - ', this.content].join('');
                 };
                 return SymbolBase;
             })();
@@ -1539,6 +1555,13 @@ var Razor;
                 function HtmlSymbol(start, content, type, errors) {
                     _super.call(this, start, content, type, errors || []);
                 }
+                Object.defineProperty(HtmlSymbol.prototype, "typeName", {
+                    get: function () {
+                        return Symbols.HtmlSymbolType[this.type];
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
                 return HtmlSymbol;
             })(Symbols.SymbolBase);
             Symbols.HtmlSymbol = HtmlSymbol;
@@ -1682,40 +1705,42 @@ var Razor;
                 return this.endSymbol(this.currentStart, startOrType);
             };
             Tokenizer.prototype.lookahead = function (expected, takeIfMatch, caseSensitive) {
+                var _this = this;
                 var filter = function (c) { return c; };
                 if (!caseSensitive) {
                     filter = function (c) { return c.toLowerCase(); };
                 }
-                if (expected.length === 0 || filter(this.currentCharacter) != filter(expected[0])) {
+                if (expected.length === 0 || filter(this.currentCharacter) !== filter(expected[0])) {
                     return false;
                 }
                 var oldBuffer;
                 if (takeIfMatch) {
                     oldBuffer = this.buffer.toString();
                 }
-                var that = this;
+                var found = true;
                 var lookahead = this.source.beginLookahead();
-                using(this, lookahead, function (disposable) {
+                using(lookahead, function () {
                     for (var i = 0; i < expected.length; i++) {
-                        if (filter(that.currentCharacter) !== filter(expected[i])) {
+                        if (filter(_this.currentCharacter) !== filter(expected[i])) {
                             if (takeIfMatch) {
-                                that.buffer.clear();
-                                that.buffer.append(oldBuffer);
+                                _this.buffer.clear();
+                                _this.buffer.append(oldBuffer);
                             }
-                            return false;
+                            found = false;
+                            break;
                         }
                         if (takeIfMatch) {
-                            that.takeCurrent();
+                            _this.takeCurrent();
                         }
                         else {
-                            that.moveNext();
+                            _this.moveNext();
                         }
                     }
-                    if (takeIfMatch) {
+                    if (takeIfMatch && found) {
                         lookahead.accept();
                     }
                 });
-                return true;
+                return found;
             };
             Tokenizer.prototype.moveNext = function () {
                 this.source.read();
@@ -1725,8 +1750,8 @@ var Razor;
                 if (this.endOfFile) {
                     return null;
                 }
-                var sym = this.turn() || null;
-                return sym;
+                var sym = this.turn();
+                return sym || null;
             };
             Tokenizer.prototype.peek = function () {
                 var result;
@@ -1983,6 +2008,643 @@ var Razor;
         Tokenizer.HtmlTokenizer = HtmlTokenizer;
     })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
 })(Razor || (Razor = {}));
+/// <reference path="../Parser/ParserHelpers.ts" />
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var JavaScriptHelpers = (function () {
+            function JavaScriptHelpers() {
+            }
+            JavaScriptHelpers.isIdentifierStart = function (character) {
+                return /[_$a-zA-Z]/.test(character);
+            };
+            JavaScriptHelpers.isIdentifierPart = function (character) {
+                return /[_a-zA-Z0-9]/.test(character);
+            };
+            return JavaScriptHelpers;
+        })();
+        Tokenizer.JavaScriptHelpers = JavaScriptHelpers;
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var Symbols;
+        (function (Symbols) {
+            (function (JavaScriptKeyword) {
+                JavaScriptKeyword[JavaScriptKeyword["Await"] = 0] = "Await";
+                JavaScriptKeyword[JavaScriptKeyword["Break"] = 1] = "Break";
+                JavaScriptKeyword[JavaScriptKeyword["Case"] = 2] = "Case";
+                JavaScriptKeyword[JavaScriptKeyword["Class"] = 3] = "Class";
+                JavaScriptKeyword[JavaScriptKeyword["Catch"] = 4] = "Catch";
+                JavaScriptKeyword[JavaScriptKeyword["Const"] = 5] = "Const";
+                JavaScriptKeyword[JavaScriptKeyword["Continue"] = 6] = "Continue";
+                JavaScriptKeyword[JavaScriptKeyword["Debugger"] = 7] = "Debugger";
+                JavaScriptKeyword[JavaScriptKeyword["Default"] = 8] = "Default";
+                JavaScriptKeyword[JavaScriptKeyword["Delete"] = 9] = "Delete";
+                JavaScriptKeyword[JavaScriptKeyword["Do"] = 10] = "Do";
+                JavaScriptKeyword[JavaScriptKeyword["Else"] = 11] = "Else";
+                JavaScriptKeyword[JavaScriptKeyword["Enum"] = 12] = "Enum";
+                JavaScriptKeyword[JavaScriptKeyword["Export"] = 13] = "Export";
+                JavaScriptKeyword[JavaScriptKeyword["Extends"] = 14] = "Extends";
+                JavaScriptKeyword[JavaScriptKeyword["False"] = 15] = "False";
+                JavaScriptKeyword[JavaScriptKeyword["Finally"] = 16] = "Finally";
+                JavaScriptKeyword[JavaScriptKeyword["For"] = 17] = "For";
+                JavaScriptKeyword[JavaScriptKeyword["Function"] = 18] = "Function";
+                JavaScriptKeyword[JavaScriptKeyword["If"] = 19] = "If";
+                JavaScriptKeyword[JavaScriptKeyword["Implements"] = 20] = "Implements";
+                JavaScriptKeyword[JavaScriptKeyword["Import"] = 21] = "Import";
+                JavaScriptKeyword[JavaScriptKeyword["In"] = 22] = "In";
+                JavaScriptKeyword[JavaScriptKeyword["Interface"] = 23] = "Interface";
+                JavaScriptKeyword[JavaScriptKeyword["Instanceof"] = 24] = "Instanceof";
+                JavaScriptKeyword[JavaScriptKeyword["Let"] = 25] = "Let";
+                JavaScriptKeyword[JavaScriptKeyword["New"] = 26] = "New";
+                JavaScriptKeyword[JavaScriptKeyword["Null"] = 27] = "Null";
+                JavaScriptKeyword[JavaScriptKeyword["Package"] = 28] = "Package";
+                JavaScriptKeyword[JavaScriptKeyword["Private"] = 29] = "Private";
+                JavaScriptKeyword[JavaScriptKeyword["Protected"] = 30] = "Protected";
+                JavaScriptKeyword[JavaScriptKeyword["Public"] = 31] = "Public";
+                JavaScriptKeyword[JavaScriptKeyword["Return"] = 32] = "Return";
+                JavaScriptKeyword[JavaScriptKeyword["Static"] = 33] = "Static";
+                JavaScriptKeyword[JavaScriptKeyword["Super"] = 34] = "Super";
+                JavaScriptKeyword[JavaScriptKeyword["Switch"] = 35] = "Switch";
+                JavaScriptKeyword[JavaScriptKeyword["This"] = 36] = "This";
+                JavaScriptKeyword[JavaScriptKeyword["Throw"] = 37] = "Throw";
+                JavaScriptKeyword[JavaScriptKeyword["True"] = 38] = "True";
+                JavaScriptKeyword[JavaScriptKeyword["Try"] = 39] = "Try";
+                JavaScriptKeyword[JavaScriptKeyword["Typeof"] = 40] = "Typeof";
+                JavaScriptKeyword[JavaScriptKeyword["Var"] = 41] = "Var";
+                JavaScriptKeyword[JavaScriptKeyword["Void"] = 42] = "Void";
+                JavaScriptKeyword[JavaScriptKeyword["While"] = 43] = "While";
+                JavaScriptKeyword[JavaScriptKeyword["Yield"] = 44] = "Yield";
+            })(Symbols.JavaScriptKeyword || (Symbols.JavaScriptKeyword = {}));
+            var JavaScriptKeyword = Symbols.JavaScriptKeyword;
+        })(Symbols = Tokenizer.Symbols || (Tokenizer.Symbols = {}));
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+/// <reference path="Symbols/JavaScriptKeyword.ts" />
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var JavaScriptKeyword = Razor.Tokenizer.Symbols.JavaScriptKeyword;
+        var keywords = {
+            "await": JavaScriptKeyword.Await,
+            "break": JavaScriptKeyword.Break,
+            "case": JavaScriptKeyword.Case,
+            "class": JavaScriptKeyword.Class,
+            "catch": JavaScriptKeyword.Catch,
+            "const": JavaScriptKeyword.Const,
+            "continue": JavaScriptKeyword.Continue,
+            "debugger": JavaScriptKeyword.Debugger,
+            "default": JavaScriptKeyword.Default,
+            "delete": JavaScriptKeyword.Delete,
+            "do": JavaScriptKeyword.Do,
+            "else": JavaScriptKeyword.Else,
+            "enum": JavaScriptKeyword.Enum,
+            "export": JavaScriptKeyword.Export,
+            "extends": JavaScriptKeyword.Extends,
+            "false": JavaScriptKeyword.False,
+            "finally": JavaScriptKeyword.Finally,
+            "for": JavaScriptKeyword.For,
+            "function": JavaScriptKeyword.Function,
+            "if": JavaScriptKeyword.If,
+            "implements": JavaScriptKeyword.Implements,
+            "import": JavaScriptKeyword.Import,
+            "in": JavaScriptKeyword.In,
+            "interface": JavaScriptKeyword.Interface,
+            "instanceof": JavaScriptKeyword.Instanceof,
+            "let": JavaScriptKeyword.Let,
+            "new": JavaScriptKeyword.New,
+            "null": JavaScriptKeyword.Null,
+            "package": JavaScriptKeyword.Package,
+            "private": JavaScriptKeyword.Private,
+            "protected": JavaScriptKeyword.Protected,
+            "public": JavaScriptKeyword.Public,
+            "return": JavaScriptKeyword.Return,
+            "static": JavaScriptKeyword.Static,
+            "super": JavaScriptKeyword.Super,
+            "switch": JavaScriptKeyword.Switch,
+            "this": JavaScriptKeyword.This,
+            "throw": JavaScriptKeyword.Throw,
+            "true": JavaScriptKeyword.True,
+            "try": JavaScriptKeyword.Try,
+            "typeof": JavaScriptKeyword.Typeof,
+            "var": JavaScriptKeyword.Var,
+            "void": JavaScriptKeyword.Void,
+            "while": JavaScriptKeyword.While,
+            "yield": JavaScriptKeyword.Yield
+        };
+        var JavaScriptKeywordDetector = (function () {
+            function JavaScriptKeywordDetector() {
+            }
+            JavaScriptKeywordDetector.symbolTypeForIdentifier = function (id) {
+                return keywords[id] || null;
+            };
+            return JavaScriptKeywordDetector;
+        })();
+        Tokenizer.JavaScriptKeywordDetector = JavaScriptKeywordDetector;
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var Symbols;
+        (function (Symbols) {
+            (function (JavaScriptSymbolType) {
+                JavaScriptSymbolType[JavaScriptSymbolType["Unknown"] = 0] = "Unknown";
+                JavaScriptSymbolType[JavaScriptSymbolType["Identifier"] = 1] = "Identifier";
+                JavaScriptSymbolType[JavaScriptSymbolType["Keyword"] = 2] = "Keyword";
+                JavaScriptSymbolType[JavaScriptSymbolType["Transition"] = 3] = "Transition";
+                JavaScriptSymbolType[JavaScriptSymbolType["IntegerlLiteral"] = 4] = "IntegerlLiteral";
+                JavaScriptSymbolType[JavaScriptSymbolType["BinaryLiteral"] = 5] = "BinaryLiteral";
+                JavaScriptSymbolType[JavaScriptSymbolType["OctalLiteral"] = 6] = "OctalLiteral";
+                JavaScriptSymbolType[JavaScriptSymbolType["HexLiteral"] = 7] = "HexLiteral";
+                JavaScriptSymbolType[JavaScriptSymbolType["RealLiteral"] = 8] = "RealLiteral";
+                JavaScriptSymbolType[JavaScriptSymbolType["StringLiteral"] = 9] = "StringLiteral";
+                JavaScriptSymbolType[JavaScriptSymbolType["RegularExpressionLiteral"] = 10] = "RegularExpressionLiteral";
+                JavaScriptSymbolType[JavaScriptSymbolType["NewLine"] = 11] = "NewLine";
+                JavaScriptSymbolType[JavaScriptSymbolType["WhiteSpace"] = 12] = "WhiteSpace";
+                JavaScriptSymbolType[JavaScriptSymbolType["Comment"] = 13] = "Comment";
+                JavaScriptSymbolType[JavaScriptSymbolType["Dot"] = 14] = "Dot";
+                JavaScriptSymbolType[JavaScriptSymbolType["Assignment"] = 15] = "Assignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["LeftBracket"] = 16] = "LeftBracket";
+                JavaScriptSymbolType[JavaScriptSymbolType["RightBracket"] = 17] = "RightBracket";
+                JavaScriptSymbolType[JavaScriptSymbolType["LeftParen"] = 18] = "LeftParen";
+                JavaScriptSymbolType[JavaScriptSymbolType["RightParen"] = 19] = "RightParen";
+                JavaScriptSymbolType[JavaScriptSymbolType["LeftBrace"] = 20] = "LeftBrace";
+                JavaScriptSymbolType[JavaScriptSymbolType["RightBrace"] = 21] = "RightBrace";
+                JavaScriptSymbolType[JavaScriptSymbolType["Plus"] = 22] = "Plus";
+                JavaScriptSymbolType[JavaScriptSymbolType["Minus"] = 23] = "Minus";
+                JavaScriptSymbolType[JavaScriptSymbolType["Modulo"] = 24] = "Modulo";
+                JavaScriptSymbolType[JavaScriptSymbolType["Increment"] = 25] = "Increment";
+                JavaScriptSymbolType[JavaScriptSymbolType["Decrement"] = 26] = "Decrement";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseNot"] = 27] = "BitwiseNot";
+                JavaScriptSymbolType[JavaScriptSymbolType["LogicalNot"] = 28] = "LogicalNot";
+                JavaScriptSymbolType[JavaScriptSymbolType["Divide"] = 29] = "Divide";
+                JavaScriptSymbolType[JavaScriptSymbolType["Multiply"] = 30] = "Multiply";
+                JavaScriptSymbolType[JavaScriptSymbolType["Exponentiation"] = 31] = "Exponentiation";
+                JavaScriptSymbolType[JavaScriptSymbolType["LessThan"] = 32] = "LessThan";
+                JavaScriptSymbolType[JavaScriptSymbolType["LessThanEqualTo"] = 33] = "LessThanEqualTo";
+                JavaScriptSymbolType[JavaScriptSymbolType["GreaterThan"] = 34] = "GreaterThan";
+                JavaScriptSymbolType[JavaScriptSymbolType["GreaterThenEqualTo"] = 35] = "GreaterThenEqualTo";
+                JavaScriptSymbolType[JavaScriptSymbolType["Equal"] = 36] = "Equal";
+                JavaScriptSymbolType[JavaScriptSymbolType["StrictEqual"] = 37] = "StrictEqual";
+                JavaScriptSymbolType[JavaScriptSymbolType["NotEqual"] = 38] = "NotEqual";
+                JavaScriptSymbolType[JavaScriptSymbolType["StrictNotEqual"] = 39] = "StrictNotEqual";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseLeftShift"] = 40] = "BitwiseLeftShift";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseRightShift"] = 41] = "BitwiseRightShift";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseUnsignedRightShift"] = 42] = "BitwiseUnsignedRightShift";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseAnd"] = 43] = "BitwiseAnd";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseOr"] = 44] = "BitwiseOr";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseXor"] = 45] = "BitwiseXor";
+                JavaScriptSymbolType[JavaScriptSymbolType["LogicalAnd"] = 46] = "LogicalAnd";
+                JavaScriptSymbolType[JavaScriptSymbolType["LogicalOr"] = 47] = "LogicalOr";
+                JavaScriptSymbolType[JavaScriptSymbolType["QuestionMark"] = 48] = "QuestionMark";
+                JavaScriptSymbolType[JavaScriptSymbolType["Colon"] = 49] = "Colon";
+                JavaScriptSymbolType[JavaScriptSymbolType["MultiplicationAssignment"] = 50] = "MultiplicationAssignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["DivisionAssignment"] = 51] = "DivisionAssignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["ModuloAssignment"] = 52] = "ModuloAssignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["AdditionAssignment"] = 53] = "AdditionAssignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["SubtractionAssignment"] = 54] = "SubtractionAssignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseLeftShiftAssignment"] = 55] = "BitwiseLeftShiftAssignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseRightShiftAssignment"] = 56] = "BitwiseRightShiftAssignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseUnsignedRightShiftAssignment"] = 57] = "BitwiseUnsignedRightShiftAssignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseAndAssignment"] = 58] = "BitwiseAndAssignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseOrAssignment"] = 59] = "BitwiseOrAssignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["BitwiseXorAssignment"] = 60] = "BitwiseXorAssignment";
+                JavaScriptSymbolType[JavaScriptSymbolType["Comma"] = 61] = "Comma";
+                JavaScriptSymbolType[JavaScriptSymbolType["DoubleQuote"] = 62] = "DoubleQuote";
+                JavaScriptSymbolType[JavaScriptSymbolType["SingleQuote"] = 63] = "SingleQuote";
+                JavaScriptSymbolType[JavaScriptSymbolType["Backslash"] = 64] = "Backslash";
+                JavaScriptSymbolType[JavaScriptSymbolType["Semicolon"] = 65] = "Semicolon";
+                JavaScriptSymbolType[JavaScriptSymbolType["RazorCommentTransition"] = 66] = "RazorCommentTransition";
+                JavaScriptSymbolType[JavaScriptSymbolType["RazorCommentStar"] = 67] = "RazorCommentStar";
+                JavaScriptSymbolType[JavaScriptSymbolType["RazorComment"] = 68] = "RazorComment";
+            })(Symbols.JavaScriptSymbolType || (Symbols.JavaScriptSymbolType = {}));
+            var JavaScriptSymbolType = Symbols.JavaScriptSymbolType;
+        })(Symbols = Tokenizer.Symbols || (Tokenizer.Symbols = {}));
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+/// <reference path="SymbolBase.ts" />
+/// <reference path="JavaScriptSymbolType.ts" />
+/// <reference path="JavaScriptKeyword.ts" />
+/// <reference path="../../SourceLocation.ts" />
+/// <reference path="../../RazorError.ts" />
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var Symbols;
+        (function (Symbols) {
+            var JavaScriptSymbol = (function (_super) {
+                __extends(JavaScriptSymbol, _super);
+                function JavaScriptSymbol(start, content, type, errors, keyword) {
+                    _super.call(this, start, content, type, errors || []);
+                    this.keyword = keyword || null;
+                }
+                Object.defineProperty(JavaScriptSymbol.prototype, "typeName", {
+                    get: function () {
+                        return Symbols.JavaScriptSymbolType[this.type];
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                return JavaScriptSymbol;
+            })(Symbols.SymbolBase);
+            Symbols.JavaScriptSymbol = JavaScriptSymbol;
+        })(Symbols = Tokenizer.Symbols || (Tokenizer.Symbols = {}));
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+/// <reference path="Symbols/JavaScriptSymbolType.ts" />
+/// <reference path="Symbols/JavaScriptSymbol.ts" />
+/// <reference path="Symbols/JavaScriptSymbolType.ts" />
+/// <reference path="Tokenizer.ts" />
+/// <reference path="../Text/ITextDocument.ts" />
+/// <reference path="../Text/SeekableTextReader.ts" />
+/// <reference path="../Internals/Using.ts" />
+/// <reference path="../RazorError.ts" />
+/// <reference path="../Parser/ParserHelpers.ts" />
+/// <reference path="JavaScriptKeywordDetector.ts" />
+/// <reference path="JavaScriptHelpers.ts" />"
+/// <reference path="OperatorHandler.ts" />
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var JavaScriptSymbol = Razor.Tokenizer.Symbols.JavaScriptSymbol;
+        var JavaScriptSymbolType = Razor.Tokenizer.Symbols.JavaScriptSymbolType;
+        var ParserHelpers = Razor.Parser.ParserHelpers;
+        var JavaScriptHelpers = Razor.Tokenizer.JavaScriptHelpers;
+        var JavaScriptKeywordDetector = Razor.Tokenizer.JavaScriptKeywordDetector;
+        var using = Razor.Using;
+        var RazorError = Razor.RazorError;
+        var transitionChar = '@';
+        var JavaScriptTokenizer = (function (_super) {
+            __extends(JavaScriptTokenizer, _super);
+            function JavaScriptTokenizer(source) {
+                _super.call(this, source);
+                this._operatorHandlers = {};
+                this.currentState = this.data;
+                this._operatorHandlers =
+                    {
+                        '.': function () { return JavaScriptSymbolType.Dot; },
+                        '[': function () { return JavaScriptSymbolType.LeftBracket; },
+                        ']': function () { return JavaScriptSymbolType.RightBracket; },
+                        '(': function () { return JavaScriptSymbolType.LeftParen; },
+                        ')': function () { return JavaScriptSymbolType.RightParen; },
+                        '{': function () { return JavaScriptSymbolType.LeftBrace; },
+                        '}': function () { return JavaScriptSymbolType.RightBrace; },
+                        '?': function () { return JavaScriptSymbolType.QuestionMark; },
+                        ':': function () { return JavaScriptSymbolType.Colon; },
+                        ',': function () { return JavaScriptSymbolType.Comma; },
+                        "'": function () { return JavaScriptSymbolType.SingleQuote; },
+                        '"': function () { return JavaScriptSymbolType.DoubleQuote; },
+                        '\\': function () { return JavaScriptSymbolType.Backslash; },
+                        ';': function () { return JavaScriptSymbolType.Semicolon; },
+                        '~': function () { return JavaScriptSymbolType.BitwiseNot; },
+                        '+': this.createTwoCharOperatorHandler(JavaScriptSymbolType.Plus, '+', JavaScriptSymbolType.Increment, '=', JavaScriptSymbolType.AdditionAssignment),
+                        '-': this.createTwoCharOperatorHandler(JavaScriptSymbolType.Minus, '-', JavaScriptSymbolType.Decrement, '=', JavaScriptSymbolType.SubtractionAssignment),
+                        '%': this.createTwoCharOperatorHandler(JavaScriptSymbolType.Modulo, '=', JavaScriptSymbolType.ModuloAssignment),
+                        '!': this.bangOperator,
+                        '/': this.createTwoCharOperatorHandler(JavaScriptSymbolType.Divide, '=', JavaScriptSymbolType.DivisionAssignment),
+                        '*': this.createTwoCharOperatorHandler(JavaScriptSymbolType.Multiply, '*', JavaScriptSymbolType.Exponentiation, '=', JavaScriptSymbolType.MultiplicationAssignment),
+                        '<': this.lessThanOperator,
+                        '>': this.greaterThanOperator,
+                        '=': this.equalityOperator,
+                        '&': this.createTwoCharOperatorHandler(JavaScriptSymbolType.BitwiseAnd, '&', JavaScriptSymbolType.LogicalAnd, '=', JavaScriptSymbolType.BitwiseAndAssignment),
+                        '|': this.createTwoCharOperatorHandler(JavaScriptSymbolType.BitwiseOr, '|', JavaScriptSymbolType.LogicalOr, '=', JavaScriptSymbolType.BitwiseOrAssignment),
+                        '^': this.createTwoCharOperatorHandler(JavaScriptSymbolType.BitwiseXor, '=', JavaScriptSymbolType.BitwiseXorAssignment)
+                    };
+            }
+            Object.defineProperty(JavaScriptTokenizer.prototype, "startState", {
+                get: function () {
+                    return this.data;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(JavaScriptTokenizer.prototype, "razorCommentStarType", {
+                get: function () { return JavaScriptSymbolType.RazorCommentStar; },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(JavaScriptTokenizer.prototype, "razorCommentType", {
+                get: function () { return JavaScriptSymbolType.RazorComment; },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(JavaScriptTokenizer.prototype, "razorCommentTransitionType", {
+                get: function () { return JavaScriptSymbolType.RazorCommentTransition; },
+                enumerable: true,
+                configurable: true
+            });
+            JavaScriptTokenizer.prototype.atSymbol = function () {
+                var _this = this;
+                this.takeCurrent();
+                if (this.currentCharacter === '*') {
+                    return this.transition(this.endSymbol(JavaScriptSymbolType.RazorCommentTransition), this.afterRazorCommentTransition);
+                }
+                else if (this.currentCharacter === '@') {
+                    return this.transition(this.endSymbol(JavaScriptSymbolType.Transition), (function () {
+                        _this.takeCurrent();
+                        return _this.transition(_this.endSymbol(JavaScriptSymbolType.Transition), _this.data);
+                    }));
+                }
+                return this.stay(this.endSymbol(JavaScriptSymbolType.Transition));
+            };
+            JavaScriptTokenizer.prototype.bangOperator = function () {
+                if (this.currentCharacter === '=') {
+                    this.takeCurrent();
+                    if (this.currentCharacter === '=') {
+                        this.takeCurrent();
+                        return JavaScriptSymbolType.StrictNotEqual;
+                    }
+                    return JavaScriptSymbolType.NotEqual;
+                }
+                return JavaScriptSymbolType.LogicalNot;
+            };
+            JavaScriptTokenizer.prototype.binaryLiteral = function () {
+                this.takeUntil(function (c) { return !ParserHelpers.isBinaryDigit(c); });
+                return this.stay(this.endSymbol(JavaScriptSymbolType.BinaryLiteral));
+            };
+            JavaScriptTokenizer.prototype.blockComment = function () {
+                this.takeUntil(function (c) { return c === '*'; });
+                if (this.endOfFile) {
+                    this.currentErrors.push(new RazorError('Untermined block comment', this.currentStart, 1));
+                    return this.transition(this.endSymbol(JavaScriptSymbolType.Comment), this.data);
+                }
+                if (this.currentCharacter === '*') {
+                    this.takeCurrent();
+                    if (this.currentCharacter === '/') {
+                        this.takeCurrent();
+                        return this.transition(this.endSymbol(JavaScriptSymbolType.Comment), this.data);
+                    }
+                }
+                return this.stay();
+            };
+            JavaScriptTokenizer.prototype.createTwoCharOperatorHandler = function (typeIfOnlyFirst, option1, typeIfOption1, option2, typeIfOption2) {
+                var _this = this;
+                return (function () {
+                    if (!!option1 && _this.currentCharacter === option1) {
+                        _this.takeCurrent();
+                        return typeIfOption1;
+                    }
+                    else if (!!option2 && _this.currentCharacter === option2) {
+                        _this.takeCurrent();
+                        return typeIfOption2;
+                    }
+                    return typeIfOnlyFirst;
+                });
+            };
+            JavaScriptTokenizer.prototype.createSymbol = function (start, content, type, errors) {
+                return new JavaScriptSymbol(start, content, type, errors);
+            };
+            JavaScriptTokenizer.prototype.data = function () {
+                var _this = this;
+                if (ParserHelpers.isNewLine(this.currentCharacter)) {
+                    var check = (this.currentCharacter === '\r');
+                    this.takeCurrent();
+                    if (check && this.currentCharacter === '\n') {
+                        this.takeCurrent();
+                    }
+                    return this.stay(this.endSymbol(JavaScriptSymbolType.NewLine));
+                }
+                else if (ParserHelpers.isWhiteSpace(this.currentCharacter)) {
+                    this.takeUntil(function (c) { return !ParserHelpers.isWhiteSpace(c); });
+                    return this.stay(this.endSymbol(JavaScriptSymbolType.WhiteSpace));
+                }
+                else if (JavaScriptHelpers.isIdentifierStart(this.currentCharacter)) {
+                    return this.identifier();
+                }
+                else if (ParserHelpers.isDecimalDigit(this.currentCharacter)) {
+                    return this.numericLiteral();
+                }
+                switch (this.currentCharacter) {
+                    case '@': return this.atSymbol();
+                    case '\'':
+                        {
+                            this.takeCurrent();
+                            return this.transition((function () { return _this.quotedLiteral('\''); }));
+                        }
+                    case '"':
+                        {
+                            this.takeCurrent();
+                            return this.transition((function () { return _this.quotedLiteral('"'); }));
+                        }
+                    case '.':
+                        {
+                            if (ParserHelpers.isDecimalDigit(this.peek())) {
+                                return this.realLiteral();
+                            }
+                            return this.stay(this.single(JavaScriptSymbolType.Dot));
+                        }
+                    case '/':
+                        {
+                            return this.solidus();
+                        }
+                    default:
+                        {
+                            return this.stay(this.endSymbol(this.operator()));
+                        }
+                }
+            };
+            JavaScriptTokenizer.prototype.decimalLiteral = function () {
+                this.takeUntil(function (c) { return !ParserHelpers.isDecimalDigit(c); });
+                if (this.currentCharacter === '.' && ParserHelpers.isDecimalDigit(this.peek())) {
+                    return this.realLiteral();
+                }
+                else if (this.currentCharacter === 'E' || this.currentCharacter === 'e') {
+                    return this.realLiteralExponentPart();
+                }
+                else {
+                    return this.stay(this.endSymbol(JavaScriptSymbolType.IntegerlLiteral));
+                }
+            };
+            JavaScriptTokenizer.prototype.equalityOperator = function () {
+                if (this.currentCharacter === '=') {
+                    this.takeCurrent();
+                    if (this.currentCharacter === '=') {
+                        this.takeCurrent();
+                        return JavaScriptSymbolType.StrictEqual;
+                    }
+                    return JavaScriptSymbolType.Equal;
+                }
+                return JavaScriptSymbolType.Assignment;
+            };
+            JavaScriptTokenizer.prototype.greaterThanOperator = function () {
+                if (this.currentCharacter === '=') {
+                    this.takeCurrent();
+                    return JavaScriptSymbolType.GreaterThenEqualTo;
+                }
+                else if (this.currentCharacter === '>') {
+                    this.takeCurrent();
+                    if (this.currentCharacter === '=') {
+                        this.takeCurrent();
+                        return JavaScriptSymbolType.BitwiseRightShiftAssignment;
+                    }
+                    else if (this.currentCharacter === '>') {
+                        this.takeCurrent();
+                        if (this.currentCharacter === '=') {
+                            this.takeCurrent();
+                            return JavaScriptSymbolType.BitwiseUnsignedRightShiftAssignment;
+                        }
+                        return JavaScriptSymbolType.BitwiseUnsignedRightShift;
+                    }
+                    return JavaScriptSymbolType.BitwiseRightShift;
+                }
+                return JavaScriptSymbolType.GreaterThan;
+            };
+            JavaScriptTokenizer.prototype.hexLiteral = function () {
+                this.takeUntil(function (c) { return !ParserHelpers.isHexDigit(c); });
+                return this.stay(this.endSymbol(JavaScriptSymbolType.HexLiteral));
+            };
+            JavaScriptTokenizer.prototype.identifier = function () {
+                this.takeCurrent();
+                this.takeUntil(function (c) { return !JavaScriptHelpers.isIdentifierPart(c); });
+                var sym = null;
+                if (this.haveContent) {
+                    var kwd = JavaScriptKeywordDetector.symbolTypeForIdentifier(this.buffer.toString());
+                    var type = JavaScriptSymbolType.Identifier;
+                    if (!!kwd) {
+                        type = JavaScriptSymbolType.Keyword;
+                    }
+                    sym = new JavaScriptSymbol(this.currentStart, this.buffer.toString(), type, null, kwd);
+                }
+                this.startSymbol();
+                return this.stay(sym);
+            };
+            JavaScriptTokenizer.prototype.lessThanOperator = function () {
+                if (this.currentCharacter === '<') {
+                    this.takeCurrent();
+                    if (this.currentCharacter === '=') {
+                        this.takeCurrent();
+                        return JavaScriptSymbolType.BitwiseLeftShiftAssignment;
+                    }
+                    return JavaScriptSymbolType.BitwiseLeftShift;
+                }
+                else if (this.currentCharacter === '=') {
+                    this.takeCurrent();
+                    return JavaScriptSymbolType.LessThanEqualTo;
+                }
+                return JavaScriptSymbolType.LessThan;
+            };
+            JavaScriptTokenizer.prototype.numericLiteral = function () {
+                if (this.takeAll('0x', true)) {
+                    return this.hexLiteral();
+                }
+                else if (this.takeAll('0b', true)) {
+                    return this.binaryLiteral();
+                }
+                else if (this.takeAll('0o', true)) {
+                    return this.octalLiteral();
+                }
+                return this.decimalLiteral();
+            };
+            JavaScriptTokenizer.prototype.octalLiteral = function () {
+                this.takeUntil(function (c) { return !ParserHelpers.isOctalDigit(c); });
+                return this.stay(this.endSymbol(JavaScriptSymbolType.OctalLiteral));
+            };
+            JavaScriptTokenizer.prototype.operator = function () {
+                var first = this.currentCharacter, handler = this._operatorHandlers[first];
+                this.takeCurrent();
+                if (!!handler) {
+                    return handler.apply(this, [first]);
+                }
+                return JavaScriptSymbolType.Unknown;
+            };
+            JavaScriptTokenizer.prototype.quotedLiteral = function (quote) {
+                this.takeUntil(function (c) { return c === '\\' || c === quote || ParserHelpers.isNewLine(c); });
+                if (this.currentCharacter === '\\') {
+                    this.takeCurrent();
+                    if (this.currentCharacter === quote || this.currentCharacter === '\\') {
+                        this.takeCurrent();
+                    }
+                    return this.stay();
+                }
+                else if (this.endOfFile || ParserHelpers.isNewLine(this.currentCharacter)) {
+                    this.currentErrors.push(new RazorError('Unterminated string literal', this.currentStart, 1));
+                }
+                else {
+                    this.takeCurrent();
+                }
+                return this.transition(this.endSymbol(JavaScriptSymbolType.StringLiteral), this.data);
+            };
+            JavaScriptTokenizer.prototype.realLiteral = function () {
+                this.takeCurrent();
+                this.takeUntil(function (c) { return !ParserHelpers.isDecimalDigit(c); });
+                return this.realLiteralExponentPart();
+            };
+            JavaScriptTokenizer.prototype.realLiteralExponentPart = function () {
+                if (this.currentCharacter === 'E' || this.currentCharacter === 'e') {
+                    this.takeCurrent();
+                    if (this.currentCharacter === '+' || this.currentCharacter === '-') {
+                        this.takeCurrent();
+                    }
+                    this.takeUntil(function (c) { return !ParserHelpers.isDecimalDigit(c); });
+                }
+                return this.stay(this.endSymbol(JavaScriptSymbolType.RealLiteral));
+            };
+            JavaScriptTokenizer.prototype.regularExpressionLiteral = function () {
+                var _this = this;
+                var oldBuffer = this.buffer.toString();
+                var lookahead = this.source.beginLookahead();
+                var found = false;
+                using(lookahead, function () {
+                    _this.takeCurrent();
+                    if (_this.currentCharacter === '/' || _this.currentCharacter === '*') {
+                        return;
+                    }
+                    while (!_this.endOfFile) {
+                        if (ParserHelpers.isNewLine(_this.currentCharacter)) {
+                            break;
+                        }
+                        _this.takeCurrent();
+                        if (_this.currentCharacter === '/') {
+                            _this.takeCurrent();
+                            while (/[igmy]/.test(_this.currentCharacter)) {
+                                _this.takeCurrent();
+                            }
+                            found = true;
+                            lookahead.accept();
+                            break;
+                        }
+                    }
+                });
+                if (!found) {
+                    this.buffer.clear();
+                    this.buffer.append(oldBuffer);
+                }
+                return found;
+            };
+            JavaScriptTokenizer.prototype.singleLineComment = function () {
+                this.takeUntil(function (c) { return ParserHelpers.isNewLine(c); });
+                return this.stay(this.endSymbol(JavaScriptSymbolType.Comment));
+            };
+            JavaScriptTokenizer.prototype.solidus = function () {
+                if (this.regularExpressionLiteral()) {
+                    return this.stay(this.endSymbol(JavaScriptSymbolType.RegularExpressionLiteral));
+                }
+                if (this.peek() === '/') {
+                    this.takeCurrent();
+                    this.takeCurrent();
+                    return this.singleLineComment();
+                }
+                else if (this.peek() === '*') {
+                    this.takeCurrent();
+                    this.takeCurrent();
+                    return this.transition(this.blockComment);
+                }
+                return this.stay(this.endSymbol(this.operator()));
+            };
+            return JavaScriptTokenizer;
+        })(Tokenizer.Tokenizer);
+        Tokenizer.JavaScriptTokenizer = JavaScriptTokenizer;
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
 /// <reference path="Symbols/ISymbol.ts" />
 /// <reference path="ITokenizer.ts" />
 /// <reference path="../Text/ITextDocument.ts" />
@@ -2039,6 +2701,27 @@ var Razor;
             return TokenizerView;
         })();
         Tokenizer.TokenizerView = TokenizerView;
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var Symbols;
+        (function (Symbols) {
+            (function (KnownSymbolType) {
+                KnownSymbolType[KnownSymbolType["WhiteSpace"] = 0] = "WhiteSpace";
+                KnownSymbolType[KnownSymbolType["Newline"] = 1] = "Newline";
+                KnownSymbolType[KnownSymbolType["Identifier"] = 2] = "Identifier";
+                KnownSymbolType[KnownSymbolType["Keyword"] = 3] = "Keyword";
+                KnownSymbolType[KnownSymbolType["Transition"] = 4] = "Transition";
+                KnownSymbolType[KnownSymbolType["Unknown"] = 5] = "Unknown";
+                KnownSymbolType[KnownSymbolType["CommentStart"] = 6] = "CommentStart";
+                KnownSymbolType[KnownSymbolType["CommentStar"] = 7] = "CommentStar";
+                KnownSymbolType[KnownSymbolType["CommentBody"] = 8] = "CommentBody";
+            })(Symbols.KnownSymbolType || (Symbols.KnownSymbolType = {}));
+            var KnownSymbolType = Symbols.KnownSymbolType;
+        })(Symbols = Tokenizer.Symbols || (Tokenizer.Symbols = {}));
     })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
 })(Razor || (Razor = {}));
 //# sourceMappingURL=razor.js.map

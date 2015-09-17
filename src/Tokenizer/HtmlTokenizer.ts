@@ -76,7 +76,7 @@ namespace Razor.Tokenizer
      * @function
      * @param {SourceLocation} start - The start location
      * @param {string} content - The symbol content
-     * @param {TSymbolType} type - The symbol type
+     * @param {HtmlSymbolType} type - The symbol type
      * @param {RazorError[]} errors - Any errors discovered while tokenizing
      * @returns {TSymbol}
      */

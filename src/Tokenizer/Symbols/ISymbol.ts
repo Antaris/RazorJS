@@ -25,6 +25,14 @@ namespace Razor.Tokenizer.Symbols
     start: SourceLocation;
     
     /**
+     * Gets the type name of the symbol.
+     * @property
+     * @readonly
+     * @returns {string}
+     */
+    typeName: string;
+    
+    /**
      * Changes the start position of the symbol
      * @function
      * @param {SourceLocation} newStart - The new start position of the symbol

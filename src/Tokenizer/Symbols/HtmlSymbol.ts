@@ -23,5 +23,16 @@ namespace Razor.Tokenizer.Symbols
     {
       super(start, content, type, errors || []);
     }
+    
+    /**
+     * Gets the type name.
+     * @propery
+     * @readonly
+     * @returns {string}
+     */
+    public get typeName(): string
+    {
+      return HtmlSymbolType[<number>this.type];
+    }
   }
 }

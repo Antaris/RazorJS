@@ -15,7 +15,10 @@ declare module Razor {
 }
 declare module Razor.Parser {
     class ParserHelpers {
+        static isBinaryDigit(value: string): boolean;
+        static isOctalDigit(value: string): boolean;
         static isDecimalDigit(value: string): boolean;
+        static isHexDigit(value: string): boolean;
         static isLetter(value: string): boolean;
         static isLetterOrDecimalDigit(value: string): boolean;
         static isNewLine(value: string): boolean;
@@ -370,6 +373,7 @@ declare module Razor.Tokenizer.Symbols {
     interface ISymbol {
         content: string;
         start: SourceLocation;
+        typeName: string;
         changeStart(newStart: SourceLocation): void;
         offsetStart(documentStart: SourceLocation): void;
     }
@@ -382,6 +386,7 @@ declare module Razor.Tokenizer.Symbols {
         type: T;
         errors: RazorError[];
         constructor(start: SourceLocation, content: string, type: T, errors: RazorError[]);
+        typeName: string;
         changeStart(newStart: SourceLocation): void;
         getContent(): LocationTagged<string>;
         equals(other: SymbolBase<T>): boolean;
@@ -416,6 +421,7 @@ declare module Razor.Tokenizer.Symbols {
 declare module Razor.Tokenizer.Symbols {
     class HtmlSymbol extends SymbolBase<HtmlSymbolType> {
         constructor(start: SourceLocation, content: string, type: HtmlSymbolType, errors?: RazorError[]);
+        typeName: string;
     }
 }
 declare module Razor.Tokenizer {
@@ -491,6 +497,189 @@ declare module Razor.Tokenizer {
     }
 }
 declare module Razor.Tokenizer {
+    class JavaScriptHelpers {
+        static isIdentifierStart(character: string): boolean;
+        static isIdentifierPart(character: string): boolean;
+    }
+}
+declare module Razor.Tokenizer.Symbols {
+    enum JavaScriptKeyword {
+        Await = 0,
+        Break = 1,
+        Case = 2,
+        Class = 3,
+        Catch = 4,
+        Const = 5,
+        Continue = 6,
+        Debugger = 7,
+        Default = 8,
+        Delete = 9,
+        Do = 10,
+        Else = 11,
+        Enum = 12,
+        Export = 13,
+        Extends = 14,
+        False = 15,
+        Finally = 16,
+        For = 17,
+        Function = 18,
+        If = 19,
+        Implements = 20,
+        Import = 21,
+        In = 22,
+        Interface = 23,
+        Instanceof = 24,
+        Let = 25,
+        New = 26,
+        Null = 27,
+        Package = 28,
+        Private = 29,
+        Protected = 30,
+        Public = 31,
+        Return = 32,
+        Static = 33,
+        Super = 34,
+        Switch = 35,
+        This = 36,
+        Throw = 37,
+        True = 38,
+        Try = 39,
+        Typeof = 40,
+        Var = 41,
+        Void = 42,
+        While = 43,
+        Yield = 44,
+    }
+}
+declare module Razor.Tokenizer {
+    import JavaScriptKeyword = Razor.Tokenizer.Symbols.JavaScriptKeyword;
+    class JavaScriptKeywordDetector {
+        static symbolTypeForIdentifier(id: string): JavaScriptKeyword;
+    }
+}
+declare module Razor.Tokenizer.Symbols {
+    enum JavaScriptSymbolType {
+        Unknown = 0,
+        Identifier = 1,
+        Keyword = 2,
+        Transition = 3,
+        IntegerlLiteral = 4,
+        BinaryLiteral = 5,
+        OctalLiteral = 6,
+        HexLiteral = 7,
+        RealLiteral = 8,
+        StringLiteral = 9,
+        RegularExpressionLiteral = 10,
+        NewLine = 11,
+        WhiteSpace = 12,
+        Comment = 13,
+        Dot = 14,
+        Assignment = 15,
+        LeftBracket = 16,
+        RightBracket = 17,
+        LeftParen = 18,
+        RightParen = 19,
+        LeftBrace = 20,
+        RightBrace = 21,
+        Plus = 22,
+        Minus = 23,
+        Modulo = 24,
+        Increment = 25,
+        Decrement = 26,
+        BitwiseNot = 27,
+        LogicalNot = 28,
+        Divide = 29,
+        Multiply = 30,
+        Exponentiation = 31,
+        LessThan = 32,
+        LessThanEqualTo = 33,
+        GreaterThan = 34,
+        GreaterThenEqualTo = 35,
+        Equal = 36,
+        StrictEqual = 37,
+        NotEqual = 38,
+        StrictNotEqual = 39,
+        BitwiseLeftShift = 40,
+        BitwiseRightShift = 41,
+        BitwiseUnsignedRightShift = 42,
+        BitwiseAnd = 43,
+        BitwiseOr = 44,
+        BitwiseXor = 45,
+        LogicalAnd = 46,
+        LogicalOr = 47,
+        QuestionMark = 48,
+        Colon = 49,
+        MultiplicationAssignment = 50,
+        DivisionAssignment = 51,
+        ModuloAssignment = 52,
+        AdditionAssignment = 53,
+        SubtractionAssignment = 54,
+        BitwiseLeftShiftAssignment = 55,
+        BitwiseRightShiftAssignment = 56,
+        BitwiseUnsignedRightShiftAssignment = 57,
+        BitwiseAndAssignment = 58,
+        BitwiseOrAssignment = 59,
+        BitwiseXorAssignment = 60,
+        Comma = 61,
+        DoubleQuote = 62,
+        SingleQuote = 63,
+        Backslash = 64,
+        Semicolon = 65,
+        RazorCommentTransition = 66,
+        RazorCommentStar = 67,
+        RazorComment = 68,
+    }
+}
+declare module Razor.Tokenizer.Symbols {
+    class JavaScriptSymbol extends SymbolBase<JavaScriptSymbolType> {
+        constructor(start: SourceLocation, content: string, type: JavaScriptSymbolType, errors?: RazorError[], keyword?: JavaScriptKeyword);
+        keyword: JavaScriptKeyword;
+        typeName: string;
+    }
+}
+declare module Razor.Tokenizer {
+    import JavaScriptSymbolType = Razor.Tokenizer.Symbols.JavaScriptSymbolType;
+    interface OperatorHandler {
+        (): JavaScriptSymbolType;
+    }
+}
+declare module Razor.Tokenizer {
+    import JavaScriptSymbol = Razor.Tokenizer.Symbols.JavaScriptSymbol;
+    import JavaScriptSymbolType = Razor.Tokenizer.Symbols.JavaScriptSymbolType;
+    import ITextDocument = Razor.Text.ITextDocument;
+    import RazorError = Razor.RazorError;
+    class JavaScriptTokenizer extends Tokenizer<JavaScriptSymbol, JavaScriptSymbolType> {
+        private _operatorHandlers;
+        constructor(source: ITextDocument);
+        protected startState: State<JavaScriptSymbol>;
+        razorCommentStarType: JavaScriptSymbolType;
+        razorCommentType: JavaScriptSymbolType;
+        razorCommentTransitionType: JavaScriptSymbolType;
+        private atSymbol();
+        private bangOperator();
+        private binaryLiteral();
+        private blockComment();
+        private createTwoCharOperatorHandler(typeIfOnlyFirst, option1?, typeIfOption1?, option2?, typeIfOption2?);
+        protected createSymbol(start: SourceLocation, content: string, type: JavaScriptSymbolType, errors: RazorError[]): JavaScriptSymbol;
+        private data();
+        private decimalLiteral();
+        private equalityOperator();
+        private greaterThanOperator();
+        private hexLiteral();
+        private identifier();
+        private lessThanOperator();
+        private numericLiteral();
+        private octalLiteral();
+        private operator();
+        private quotedLiteral(quote);
+        private realLiteral();
+        private realLiteralExponentPart();
+        private regularExpressionLiteral();
+        private singleLineComment();
+        private solidus();
+    }
+}
+declare module Razor.Tokenizer {
     import ISymbol = Razor.Tokenizer.Symbols.ISymbol;
     import ITextDocument = Razor.Text.ITextDocument;
     class TokenizerView<TTokenizer extends ITokenizer, TSymbol extends ISymbol, TSymbolType> {
@@ -504,5 +693,18 @@ declare module Razor.Tokenizer {
         tokenizer: TTokenizer;
         next(): boolean;
         putBack(symbol: TSymbol): void;
+    }
+}
+declare module Razor.Tokenizer.Symbols {
+    enum KnownSymbolType {
+        WhiteSpace = 0,
+        Newline = 1,
+        Identifier = 2,
+        Keyword = 3,
+        Transition = 4,
+        Unknown = 5,
+        CommentStart = 6,
+        CommentStar = 7,
+        CommentBody = 8,
     }
 }

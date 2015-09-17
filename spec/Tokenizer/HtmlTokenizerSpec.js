@@ -144,6 +144,18 @@ describe("Razor.Tokenizer", function () {
       expect(new HtmlSymbol(SL(4, 0, 4), ">", HtmlSymbolType.CloseAngle).equals(tokenizer.nextSymbol())).toEqual(true);
     });
     
+    it("after accepting lookahead tokenizer returns next token", function () {
+      var tokenizer = new HtmlTokenizer(new SeekableTextReader("<foo>")),
+          lookahead = tokenizer.source.beginLookahead();
+          
+      using (lookahead, function () {
+        expect(new HtmlSymbol(SL(0, 0, 0), "<", HtmlSymbolType.OpenAngle).equals(tokenizer.nextSymbol())).toEqual(true);
+        expect(new HtmlSymbol(SL(1, 0, 1), "foo", HtmlSymbolType.Text).equals(tokenizer.nextSymbol())).toEqual(true);
+        lookahead.accept();
+      });
+      expect(new HtmlSymbol(SL(4, 0, 4), ">", HtmlSymbolType.CloseAngle).equals(tokenizer.nextSymbol())).toEqual(true);
+    });
+    
   });
   
   var ignoreRemaining = new HtmlSymbol(SL(0, 0, 0), '', HtmlSymbolType.Unknown);

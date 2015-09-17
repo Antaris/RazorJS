@@ -27,6 +27,17 @@ namespace Razor.Tokenizer.Symbols
     }
     
     /**
+     * Gets the type name.
+     * @propery
+     * @readonly
+     * @returns {string}
+     */
+    public get typeName(): string
+    {
+      return this.type.toString();
+    }
+    
+    /**
      * Changes the start position of the symbol
      * @function
      * @param {SourceLocation} newStart - The new start position of the symbol
@@ -81,7 +92,7 @@ namespace Razor.Tokenizer.Symbols
      */
     public toString(): string
     {
-      return [this.start.toString(), ' ', this.type, ' - ', this.content].join('');
+      return [this.start.toString(), ' ', this.typeName, ' - ', this.content].join('');
     }
   }
 }

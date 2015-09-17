@@ -241,7 +241,7 @@ namespace Razor.Tokenizer
         filter = (c) => c.toLowerCase();
       }
       
-      if (expected.length === 0 || filter(this.currentCharacter) != filter(expected[0]))
+      if (expected.length === 0 || filter(this.currentCharacter) !== filter(expected[0]))
       {
         return false;
       }
@@ -252,35 +252,36 @@ namespace Razor.Tokenizer
         oldBuffer = this.buffer.toString();
       }
       
-      var that = this;
+      var found = true;
       var lookahead = this.source.beginLookahead();
-      using (this, lookahead, function (disposable: IDisposable) {       
+      using (lookahead, () => {       
         for (var i = 0; i < expected.length; i++)
         {
-          if (filter(that.currentCharacter) !== filter(expected[i]))
+          if (filter(this.currentCharacter) !== filter(expected[i]))
           {
             if (takeIfMatch)
             {
-              that.buffer.clear();
-              that.buffer.append(oldBuffer);
+              this.buffer.clear();
+              this.buffer.append(oldBuffer);
             }
-            return false;
+            found = false;
+            break;
           }
           if (takeIfMatch)
           {
-            that.takeCurrent();
+            this.takeCurrent();
           }
           else
           {
-            that.moveNext();
+            this.moveNext();
           }
         }
-        if (takeIfMatch)
+        if (takeIfMatch && found)
         {
           lookahead.accept();
         }
       });
-      return true;
+      return found;
     }
     
     /**
@@ -305,9 +306,9 @@ namespace Razor.Tokenizer
       {
         return null;
       }
-      var sym = this.turn() || null;
+      var sym = this.turn(); 
       
-      return sym;
+      return sym || null;
     }
     
     /**
