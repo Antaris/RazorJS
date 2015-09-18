@@ -3,7 +3,7 @@
 /// <reference path="../../Text/SourceLocationTracker.ts" />
 /// <reference path="SyntaxTreeNode.ts" />
 /// <reference path="SpanKind.ts" />
-/// <reference path="SpanBuilder.ts" />
+/// <reference path="Span.ts" />
 /// <reference path="../../Tokenizer/Symbols/ISymbol.ts" />
 /// <reference path="../../Chunks/Generators/ISpanChunkGenerator.ts" />
 /// <reference path="../../Chunks/Generators/SpanChunkGenerator.ts" />
@@ -13,7 +13,7 @@ namespace Razor.Parser.SyntaxTree
 {
   import ISymbol = Razor.Tokenizer.Symbols.ISymbol;
   import ISpanChunkGenerator = Razor.Chunks.Generators.ISpanChunkGenerator;
-  import SpanChunkGenerator = Razor.Chunks.Genetators.SpanChunkGenetaror;
+  import SpanChunkGenerator = Razor.Chunks.Generators.SpanChunkGenerator;
   import StringBuilder = Razor.Text.StringBuilder;
   import SourceLocationTracker = Razor.Text.SourceLocationTracker;
   
@@ -131,7 +131,7 @@ namespace Razor.Parser.SyntaxTree
     public reset(): void
     {
       this._symbols = [];
-      this.chunkGenerator = SpanChunkGenerator.Null;
+      this.chunkGenerator = new SpanChunkGenerator();
       this.start = SourceLocation.Zero;
     }
   }

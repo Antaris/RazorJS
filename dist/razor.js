@@ -270,6 +270,281 @@ var Razor;
     })();
     Razor.StateMachine = StateMachine;
 })(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            (function (BlockType) {
+                BlockType[BlockType["Statement"] = 0] = "Statement";
+                BlockType[BlockType["Directive"] = 1] = "Directive";
+                BlockType[BlockType["Functions"] = 2] = "Functions";
+                BlockType[BlockType["Expression"] = 3] = "Expression";
+                BlockType[BlockType["Helper"] = 4] = "Helper";
+                BlockType[BlockType["Markup"] = 5] = "Markup";
+                BlockType[BlockType["Section"] = 6] = "Section";
+                BlockType[BlockType["Template"] = 7] = "Template";
+                BlockType[BlockType["Comment"] = 8] = "Comment";
+                BlockType[BlockType["Tag"] = 9] = "Tag";
+            })(SyntaxTree.BlockType || (SyntaxTree.BlockType = {}));
+            var BlockType = SyntaxTree.BlockType;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="Chunk.ts" />
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    __.prototype = b.prototype;
+    d.prototype = new __();
+};
+var Razor;
+(function (Razor) {
+    var Chunks;
+    (function (Chunks) {
+        var ParentChunk = (function (_super) {
+            __extends(ParentChunk, _super);
+            function ParentChunk() {
+                _super.apply(this, arguments);
+                this.children = [];
+            }
+            return ParentChunk;
+        })(Chunks.Chunk);
+        Chunks.ParentChunk = ParentChunk;
+    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
+})(Razor || (Razor = {}));
+/// <reference path="Chunk.ts" />
+var Razor;
+(function (Razor) {
+    var Chunks;
+    (function (Chunks) {
+        var ChunkTree = (function () {
+            function ChunkTree() {
+                this.chunks = [];
+            }
+            return ChunkTree;
+        })();
+        Chunks.ChunkTree = ChunkTree;
+    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../SourceLocation.ts" />
+/// <reference path="../Parser/SyntaxTree/SyntaxTreeNode.ts" />
+/// <reference path="Chunk.ts" />
+/// <reference path="ParentChunk.ts" />
+/// <reference path="ChunkTree.ts" />
+var Razor;
+(function (Razor) {
+    var Chunks;
+    (function (Chunks) {
+        var ChunkTreeBuilder = (function () {
+            function ChunkTreeBuilder() {
+                this._parentStack = [];
+                this._chunkTree = new Chunks.ChunkTree();
+            }
+            Object.defineProperty(ChunkTreeBuilder.prototype, "chunkTree", {
+                get: function () {
+                    return this._chunkTree;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            ChunkTreeBuilder.prototype.addChunk = function (chunk, association, topLevel) {
+                topLevel = topLevel || false;
+                this._lastChunk = chunk;
+                chunk.association = association;
+                chunk.start = association.start;
+                if (this._parentStack.length === 0 || topLevel) {
+                    this.chunkTree.chunks.push(chunk);
+                }
+                else {
+                    this._parentStack[this._parentStack.length - 1].children.push(chunk);
+                }
+            };
+            ChunkTreeBuilder.prototype.startParentChunk = function (parentChunk, association, topLevel) {
+                this.addChunk(parentChunk, association, topLevel);
+                this._parentStack.push(parentChunk);
+                return parentChunk;
+            };
+            ChunkTreeBuilder.prototype.endParentChunk = function () {
+                this._lastChunk = this._parentStack.pop();
+            };
+            return ChunkTreeBuilder;
+        })();
+        Chunks.ChunkTreeBuilder = ChunkTreeBuilder;
+    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../ChunkTreeBuilder.ts" />
+var Razor;
+(function (Razor) {
+    var Chunks;
+    (function (Chunks) {
+        var Generators;
+        (function (Generators) {
+            var ChunkGeneratorContext = (function () {
+                function ChunkGeneratorContext(context) {
+                    if (!context) {
+                        this.chunkTreeBuilder = new Chunks.ChunkTreeBuilder();
+                    }
+                    else {
+                        this.chunkTreeBuilder = context.chunkTreeBuilder;
+                    }
+                }
+                return ChunkGeneratorContext;
+            })();
+            Generators.ChunkGeneratorContext = ChunkGeneratorContext;
+        })(Generators = Chunks.Generators || (Chunks.Generators = {}));
+    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
+})(Razor || (Razor = {}));
+/// <reference path="ChunkGeneratorContext.ts" />
+/// <reference path="../../Parser/SyntaxTree/Block.ts" />
+/// <reference path="ChunkGeneratorContext.ts" />
+/// <reference path="IParentChunkGenerator.ts" />
+/// <reference path="../../Parser/SyntaxTree/Block.ts" />
+var Razor;
+(function (Razor) {
+    var Chunks;
+    (function (Chunks) {
+        var Generators;
+        (function (Generators) {
+            var ParentChunkGenerator = (function () {
+                function ParentChunkGenerator() {
+                }
+                Object.defineProperty(ParentChunkGenerator.prototype, "runtimeTypeName", {
+                    get: function () {
+                        return "ParentChunkGenerator";
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                ParentChunkGenerator.prototype.generateStartParentChunk = function (block, context) {
+                };
+                ParentChunkGenerator.prototype.generateEndParentChunk = function (block, context) {
+                };
+                ParentChunkGenerator.prototype.equals = function (other) {
+                    if (!other) {
+                        return false;
+                    }
+                    if (!(other instanceof ParentChunkGenerator)) {
+                        return false;
+                    }
+                    return this.runtimeTypeName === other.runtimeTypeName;
+                };
+                return ParentChunkGenerator;
+            })();
+            Generators.ParentChunkGenerator = ParentChunkGenerator;
+        })(Generators = Chunks.Generators || (Chunks.Generators = {}));
+    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
+})(Razor || (Razor = {}));
+/// <reference path="SyntaxTreeNode.ts" />
+/// <reference path="BlockType.ts" />
+/// <reference path="Block.ts" />
+/// <reference path="../../Chunks/Generators/IParentChunkGenerator.ts" />
+/// <reference path="../../Chunks/Generators/ParentChunkGenerator.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            var ParentChunkGenerator = Razor.Chunks.Generators.ParentChunkGenerator;
+            var BlockBuilder = (function () {
+                function BlockBuilder(original) {
+                    if (!original) {
+                        this.reset();
+                    }
+                    else {
+                        this.type = original.type;
+                        this.children = original.children.slice(0);
+                        this.chunkGenerator = original.chunkGenerator;
+                    }
+                }
+                Object.defineProperty(BlockBuilder.prototype, "children", {
+                    get: function () {
+                        return this._children;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                BlockBuilder.prototype.build = function () {
+                    return new SyntaxTree.Block(this);
+                };
+                BlockBuilder.prototype.reset = function () {
+                    this.type = null;
+                    this.children = [];
+                    this.chunkGenerator = new ParentChunkGenerator();
+                };
+                return BlockBuilder;
+            })();
+            SyntaxTree.BlockBuilder = BlockBuilder;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../../SourceLocation.ts" />
+/// <reference path="../Internals/Environment.ts" />
+var Razor;
+(function (Razor) {
+    var Text;
+    (function (Text) {
+        var Environment = Razor.Environment;
+        var StringBuilder = (function () {
+            function StringBuilder(content) {
+                if (!!content) {
+                    this._buffer = content.split('');
+                }
+                else {
+                    this._buffer = [];
+                }
+            }
+            Object.defineProperty(StringBuilder.prototype, "length", {
+                get: function () {
+                    return this._buffer.length;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            StringBuilder.prototype.append = function (content, startIndexOrRepeat, count) {
+                if (!!content && content.length > 1) {
+                    this.appendCore(content, 0, content.length);
+                }
+                else if (!!count) {
+                    this.appendCore(content, startIndexOrRepeat, count);
+                }
+                else if (!!startIndexOrRepeat) {
+                    for (var i = 0; i < startIndexOrRepeat; i++) {
+                        this.appendCore(content[0], 0, 1);
+                    }
+                }
+                else if (!!content) {
+                    this.appendCore(content[0], 0, 1);
+                }
+                return this;
+            };
+            StringBuilder.prototype.appendLine = function (content) {
+                return this.append((content || '') + Environment.NewLine);
+            };
+            StringBuilder.prototype.appendCore = function (content, startIndex, count) {
+                for (var i = startIndex; i < content.length && i < (startIndex + count); i++) {
+                    this._buffer.push(content[i]);
+                }
+            };
+            StringBuilder.prototype.charAt = function (index) {
+                if (index >= this.length) {
+                    throw "Index out of range: " + index;
+                }
+                return this._buffer[index];
+            };
+            StringBuilder.prototype.clear = function () {
+                this._buffer = [];
+            };
+            StringBuilder.prototype.toString = function () {
+                return this._buffer.join("");
+            };
+            return StringBuilder;
+        })();
+        Text.StringBuilder = StringBuilder;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
 /// <reference path="IDisposable.ts" />
 var Razor;
 (function (Razor) {
@@ -285,47 +560,7 @@ var Razor;
     })();
     Razor.DisposableAction = DisposableAction;
 })(Razor || (Razor = {}));
-/// <reference path="IDisposable.ts" />"
-var Razor;
-(function (Razor) {
-    function Using(contextOrDisposable, disposableOrAction, action) {
-        if (arguments.length === 2) {
-            action = disposableOrAction;
-            disposableOrAction = contextOrDisposable;
-            contextOrDisposable = null;
-        }
-        try {
-            action.apply(contextOrDisposable, [disposableOrAction]);
-        }
-        finally {
-            disposableOrAction.dispose();
-        }
-    }
-    Razor.Using = Using;
-})(Razor || (Razor = {}));
-/// <reference path="../../SourceLocation.ts" />
-var Razor;
-(function (Razor) {
-    var Parser;
-    (function (Parser) {
-        var SyntaxTree;
-        (function (SyntaxTree) {
-            var Span = (function () {
-                function Span() {
-                }
-                return Span;
-            })();
-            SyntaxTree.Span = Span;
-        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
-    })(Parser = Razor.Parser || (Razor.Parser = {}));
-})(Razor || (Razor = {}));
 /// <reference path="../Internals/DisposableAction.ts" />
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    __.prototype = b.prototype;
-    d.prototype = new __();
-};
 var Razor;
 (function (Razor) {
     var Text;
@@ -353,6 +588,865 @@ var Razor;
 /// <reference path="ITextBuffer.ts" />
 /// <reference path="LookaheadToken.ts" />
 /// <reference path="ITextDocument.ts" />"
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            (function (SpanKind) {
+                SpanKind[SpanKind["Transition"] = 0] = "Transition";
+                SpanKind[SpanKind["MetaCode"] = 1] = "MetaCode";
+                SpanKind[SpanKind["Comment"] = 2] = "Comment";
+                SpanKind[SpanKind["Code"] = 3] = "Code";
+                SpanKind[SpanKind["Markup"] = 4] = "Markup";
+            })(SyntaxTree.SpanKind || (SyntaxTree.SpanKind = {}));
+            var SpanKind = SyntaxTree.SpanKind;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../../Internals/IEquatable.ts" />
+/// <reference path="ChunkGeneratorContext.ts" />
+/// <reference path="../../Parser/SyntaxTree/Span.ts" />
+/// <reference path="ChunkGeneratorContext.ts" />
+/// <reference path="ISpanChunkGenerator.ts" />
+/// <reference path="../../Parser/SyntaxTree/Span.ts" />
+var Razor;
+(function (Razor) {
+    var Chunks;
+    (function (Chunks) {
+        var Generators;
+        (function (Generators) {
+            var SpanChunkGenerator = (function () {
+                function SpanChunkGenerator() {
+                }
+                Object.defineProperty(SpanChunkGenerator.prototype, "runtimeTypeName", {
+                    get: function () {
+                        return "SpanChunkGenerator";
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                SpanChunkGenerator.prototype.generateChunk = function (span, context) {
+                };
+                SpanChunkGenerator.prototype.equals = function (other) {
+                    if (!other) {
+                        return false;
+                    }
+                    if (!(other instanceof SpanChunkGenerator)) {
+                        return false;
+                    }
+                    return this.runtimeTypeName === other.runtimeTypeName;
+                };
+                SpanChunkGenerator.prototype.toString = function () {
+                    var typeName = this.runtimeTypeName;
+                    return (typeName === "SpanChunkGenerator" ? "None" : typeName);
+                };
+                return SpanChunkGenerator;
+            })();
+            Generators.SpanChunkGenerator = SpanChunkGenerator;
+        })(Generators = Chunks.Generators || (Chunks.Generators = {}));
+    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../../Internals/IEquatable.ts" />
+/// <reference path="../../SourceLocation.ts" />
+/// <reference path="../../Text/SourceLocationTracker.ts" />
+/// <reference path="SyntaxTreeNode.ts" />
+/// <reference path="SpanKind.ts" />
+/// <reference path="Span.ts" />
+/// <reference path="../../Tokenizer/Symbols/ISymbol.ts" />
+/// <reference path="../../Chunks/Generators/ISpanChunkGenerator.ts" />
+/// <reference path="../../Chunks/Generators/SpanChunkGenerator.ts" />
+/// <reference path="../../Text/StringBuilder.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            var SpanChunkGenerator = Razor.Chunks.Generators.SpanChunkGenerator;
+            var SourceLocationTracker = Razor.Text.SourceLocationTracker;
+            var SpanBuilder = (function () {
+                function SpanBuilder(original) {
+                    this._symbols = [];
+                    this._tracker = new SourceLocationTracker();
+                    if (!!original) {
+                        this.kind = original.kind;
+                        this._symbols = original.symbols.slice(0);
+                        this.chunkGenerator = original.chunkGenerator;
+                        this.start = original.start;
+                    }
+                    else {
+                        this.reset();
+                    }
+                }
+                Object.defineProperty(SpanBuilder.prototype, "symbols", {
+                    get: function () {
+                        return this._symbols;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                SpanBuilder.prototype.accept = function (symbol) {
+                    if (!symbol) {
+                        return;
+                    }
+                    if (this._symbols.length === 0) {
+                        this.start = symbol.start;
+                        symbol.changeStart(Razor.SourceLocation.Zero);
+                        this._tracker.currentLocation = Razor.SourceLocation.Zero;
+                    }
+                    else {
+                        symbol.changeStart(this._tracker.currentLocation);
+                    }
+                    this._symbols.push(symbol);
+                    this._tracker.updateLocation(symbol.content);
+                };
+                SpanBuilder.prototype.build = function () {
+                    return new SyntaxTree.Span(this);
+                };
+                SpanBuilder.prototype.clearSymbols = function () {
+                    this._symbols = [];
+                };
+                SpanBuilder.prototype.reset = function () {
+                    this._symbols = [];
+                    this.chunkGenerator = new SpanChunkGenerator();
+                    this.start = Razor.SourceLocation.Zero;
+                };
+                return SpanBuilder;
+            })();
+            SyntaxTree.SpanBuilder = SpanBuilder;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../../Internals/IEquatable.ts" />
+/// <reference path="../../SourceLocation.ts" />
+/// <reference path="../../Text/SourceLocationTracker.ts" />
+/// <reference path="SyntaxTreeNode.ts" />
+/// <reference path="SpanKind.ts" />
+/// <reference path="SpanBuilder.ts" />
+/// <reference path="../../Tokenizer/Symbols/ISymbol.ts" />
+/// <reference path="../../Chunks/Generators/ISpanChunkGenerator.ts" />
+/// <reference path="../../Chunks/Generators/SpanChunkGenerator.ts" />
+/// <reference path="../../Text/StringBuilder.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            var SpanChunkGenerator = Razor.Chunks.Generators.SpanChunkGenerator;
+            var StringBuilder = Razor.Text.StringBuilder;
+            var SourceLocationTracker = Razor.Text.SourceLocationTracker;
+            var Span = (function (_super) {
+                __extends(Span, _super);
+                function Span(builder) {
+                    _super.call(this);
+                    this.replaceWith(builder);
+                }
+                Object.defineProperty(Span.prototype, "chunkGenerator", {
+                    get: function () {
+                        return this._chunkGenerator;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Span.prototype, "content", {
+                    get: function () {
+                        return this._content;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Span.prototype, "isBlock", {
+                    get: function () {
+                        return false;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Span.prototype, "kind", {
+                    get: function () {
+                        return this._kind;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Span.prototype, "length", {
+                    get: function () {
+                        return this._content.length;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Span.prototype, "next", {
+                    get: function () {
+                        return this._next || null;
+                    },
+                    set: function (value) {
+                        this._next = value || null;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Span.prototype, "previous", {
+                    get: function () {
+                        return this._previous || null;
+                    },
+                    set: function (value) {
+                        this._previous = value || null;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Span.prototype, "start", {
+                    get: function () {
+                        return this._start;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Span.prototype, "symbols", {
+                    get: function () {
+                        return this._symbols;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Span.prototype.accept = function (visitor) {
+                    visitor.visitSpan(this);
+                };
+                Span.prototype.change = function (changes) {
+                    var builder = new SyntaxTree.SpanBuilder(this);
+                    changes(builder);
+                    this.replaceWith(builder);
+                };
+                Span.prototype.changeStart = function (newStart) {
+                    this._start = newStart;
+                    var current = this;
+                    var tracker = new SourceLocationTracker(newStart);
+                    tracker.updateLocation(this.content);
+                    while ((current = current.next) !== null) {
+                        current._start = tracker.currentLocation;
+                        tracker.updateLocation(current.content);
+                    }
+                };
+                Span.prototype.equals = function (other) {
+                    if (!other) {
+                        return false;
+                    }
+                    var result = this.kind === other.kind &&
+                        this.chunkGenerator.equals(other.chunkGenerator) &&
+                        this.content === other.content;
+                    if (result) {
+                        if (this.symbols.length !== other.symbols.length) {
+                            return false;
+                        }
+                        else {
+                            for (var i = 0; i < this.symbols.length; i++) {
+                                if (!this.symbols[i].equals(other.symbols[i])) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                Span.prototype.equivalentTo = function (node) {
+                    var other;
+                    if (node instanceof Span) {
+                        other = node;
+                        return this.kind === other.kind &&
+                            this.start.equals(other.start) &&
+                            this.content === other.content;
+                    }
+                    return false;
+                };
+                Span.getContent = function (symbols) {
+                    var builder = new StringBuilder();
+                    for (var i = 0; i < symbols.length; i++) {
+                        builder.append(symbols[i].content);
+                    }
+                    return builder.toString();
+                };
+                Span.getGroupedSymbols = function (symbols) {
+                    var group = {};
+                    for (var i = 0; i < symbols.length; i++) {
+                        var name = symbols[i].runtimeTypeName;
+                        if (group.hasOwnProperty(name)) {
+                            group[name] = group[name] + 1;
+                        }
+                        else {
+                            group[name] = 1;
+                        }
+                    }
+                    var builder = new StringBuilder();
+                    for (var groupName in group) {
+                        if (group.hasOwnProperty(groupName)) {
+                            builder.append(groupName + ":" + group[groupName].toString() + ";");
+                        }
+                    }
+                    return builder.toString();
+                };
+                Span.prototype.replaceWith = function (builder) {
+                    this._kind = builder.kind;
+                    this._symbols = builder.symbols;
+                    this._chunkGenerator = builder.chunkGenerator || new SpanChunkGenerator();
+                    this._start = builder.start;
+                    builder.reset();
+                    this._content = Span.getContent(this._symbols);
+                    this._groupedSymbols = Span.getGroupedSymbols(this._symbols);
+                };
+                Span.prototype.setStart = function (newStart) {
+                    this._start = newStart;
+                };
+                Span.prototype.toString = function () {
+                    var builder = new StringBuilder();
+                    builder.append(SyntaxTree.SpanKind[this.kind]);
+                    builder.append("Span at " + this.start.toString() + "::" + this.length.toString() + " - [" + this.content + "]");
+                    builder.append(" Gen: <");
+                    builder.append(this.chunkGenerator.toString());
+                    builder.append("> {");
+                    builder.append(this._groupedSymbols);
+                    builder.append("}");
+                    return builder.toString();
+                };
+                return Span;
+            })(SyntaxTree.SyntaxTreeNode);
+            SyntaxTree.Span = Span;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="ITextBuffer.ts" />
+/// <reference path="../Internals/IEquatable.ts" />
+/// <reference path="../Parser/SyntaxTree/Span.ts" />
+var Razor;
+(function (Razor) {
+    var Text;
+    (function (Text) {
+        var Span = Razor.Parser.SyntaxTree.Span;
+        var TextChange = (function () {
+            function TextChange(oldPosition, oldLength, oldBuffer, newPositionOrLength, newLengthOrBuffer, newBuffer) {
+                var newPosition, newLength;
+                if (arguments.length === 5) {
+                    newBuffer = newLengthOrBuffer;
+                    newLength = newPositionOrLength;
+                    newPosition = oldPosition;
+                }
+                else {
+                    newPosition = newPositionOrLength;
+                    newLength = newLengthOrBuffer;
+                }
+                this._oldPosition = oldPosition;
+                this._oldLength = oldLength;
+                this._oldBuffer = oldBuffer;
+                this._newPosition = newPosition;
+                this._newLength = newLength;
+                this._newBuffer = newBuffer;
+            }
+            Object.defineProperty(TextChange.prototype, "isDelete", {
+                get: function () {
+                    return this._oldLength > 0 && this._newLength === 0;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextChange.prototype, "isInsert", {
+                get: function () {
+                    return this._oldLength === 0 && this._newLength > 0;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextChange.prototype, "isReplace", {
+                get: function () {
+                    return this._oldLength > 0 && this._newLength > 0;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextChange.prototype, "newBuffer", {
+                get: function () {
+                    return this._newBuffer;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextChange.prototype, "newLength", {
+                get: function () {
+                    return this._newLength;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextChange.prototype, "newPosition", {
+                get: function () {
+                    return this._newPosition;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextChange.prototype, "newText", {
+                get: function () {
+                    if (!this._newText) {
+                        this._newText = TextChange.getText(this._newBuffer, this._newPosition, this._newLength);
+                    }
+                    return this._newText;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextChange.prototype, "oldBuffer", {
+                get: function () {
+                    return this._oldBuffer;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextChange.prototype, "oldLength", {
+                get: function () {
+                    return this._oldLength;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextChange.prototype, "oldPosition", {
+                get: function () {
+                    return this._oldPosition;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextChange.prototype, "oldText", {
+                get: function () {
+                    if (!this._oldText) {
+                        this._oldText = TextChange.getText(this._oldBuffer, this._oldPosition, this._oldLength);
+                    }
+                    return this._oldText;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            TextChange.prototype.applyChange = function (contentOrSpan, changeOffset) {
+                var content, changeRelativePosition, prefix, suffix;
+                if (contentOrSpan instanceof Span) {
+                    content = contentOrSpan.content;
+                    changeOffset = contentOrSpan.start.absoluteIndex;
+                }
+                else {
+                    content = contentOrSpan;
+                }
+                changeRelativePosition = this.oldPosition - changeOffset;
+                prefix = content.substr(0, changeRelativePosition);
+                suffix = content.substr(changeRelativePosition + changeOffset);
+                return [prefix, this.newText, suffix].join('');
+            };
+            TextChange.prototype.equals = function (other) {
+                if (!!other) {
+                    return this._oldPosition === other.oldPosition &&
+                        this._oldLength === other.oldLength &&
+                        this._newPosition === other.newPosition &&
+                        this._newLength === other.newLength &&
+                        this._oldBuffer === other.oldBuffer &&
+                        this._newBuffer === other.newBuffer;
+                }
+                return false;
+            };
+            TextChange.getText = function (buffer, position, length) {
+                var oldPosition, builder, i = 0, c;
+                if (length === 0) {
+                    return '';
+                }
+                oldPosition = buffer.position;
+                try {
+                    buffer.position = position;
+                    if (length === 1) {
+                        return buffer.read();
+                    }
+                    else {
+                        builder = [];
+                        for (; i < length; i++) {
+                            c = buffer.read();
+                            builder.push(c);
+                        }
+                        return builder.join('');
+                    }
+                }
+                finally {
+                    buffer.position = oldPosition;
+                }
+            };
+            TextChange.prototype.normalize = function () {
+                if (!!this._oldBuffer &&
+                    this.isReplace &&
+                    this._newLength > this._oldLength &&
+                    this._newPosition === this._oldPosition &&
+                    this.newText.indexOf(this.oldText) >= 0) {
+                    return new TextChange(this.oldPosition + this.oldLength, 0, this.oldBuffer, this.oldPosition + this.oldLength, this.newLength - this.oldLength, this.newBuffer);
+                }
+                return this;
+            };
+            TextChange.prototype.toString = function () {
+                return ['(', this.oldPosition, ':', this.oldLength, ' "', this.oldText, '") => (', this.newPosition, ':', this.newLength, ' \"', this.newText, '\")'].join('');
+            };
+            return TextChange;
+        })();
+        Text.TextChange = TextChange;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../../Internals/IEquatable.ts" />
+/// <reference path="SyntaxTreeNode.ts" />
+/// <reference path="BlockType.ts" />
+/// <reference path="BlockBuilder.ts" />
+/// <reference path="../../Tokenizer/Symbols/ISymbol.ts" />
+/// <reference path="../../Chunks/Generators/IParentChunkGenerator.ts" />
+/// <reference path="../../Chunks/Generators/ParentChunkGenerator.ts" />
+/// <reference path="../../Text/StringBuilder.ts" />
+/// <reference path="../../Text/TextChange.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            var StringBuilder = Razor.Text.StringBuilder;
+            var Block = (function (_super) {
+                __extends(Block, _super);
+                function Block(sourceOrType, contents, generator) {
+                    _super.call(this);
+                    var type;
+                    var source;
+                    if (sourceOrType instanceof SyntaxTree.BlockBuilder) {
+                        source = sourceOrType;
+                        type = source.type;
+                        contents = source.children;
+                        generator = source.chunkGenerator;
+                    }
+                    else {
+                        type = sourceOrType;
+                    }
+                    this._type = type;
+                    this._children = contents;
+                    this._chunkGenetator = generator;
+                    for (var i = 0; i < this._children.length; i++) {
+                        this._children[i].parent = this;
+                    }
+                }
+                Object.defineProperty(Block.prototype, "children", {
+                    get: function () {
+                        return this._children;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Block.prototype, "chunkGenerator", {
+                    get: function () {
+                        return this._chunkGenetator;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Block.prototype, "isBlock", {
+                    get: function () {
+                        return true;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Block.prototype, "length", {
+                    get: function () {
+                        var len = 0;
+                        for (var i = 0; i < this._children.length; i++) {
+                            len += this._children[i].length;
+                        }
+                        return len;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Block.prototype, "start", {
+                    get: function () {
+                        if (this._children.length > 0) {
+                            return this._children[0].start;
+                        }
+                        return Razor.SourceLocation.Zero;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(Block.prototype, "type", {
+                    get: function () {
+                        return this._type;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Block.prototype.accept = function (visitor) {
+                    visitor.visitBlock(this);
+                };
+                Block.prototype.equals = function (other) {
+                    if (!other) {
+                        return false;
+                    }
+                    if (!(other instanceof Block)) {
+                        return false;
+                    }
+                    var result = this.type === other.type &&
+                        this.chunkGenerator.equals(other.chunkGenerator);
+                    if (result) {
+                        if (this.children.length !== other.children.length) {
+                            return false;
+                        }
+                        else {
+                            for (var i = 0; i < this.children.length; i++) {
+                                if (!this.children[i].equals(other.children[i])) {
+                                    return false;
+                                }
+                            }
+                            return true;
+                        }
+                    }
+                    return false;
+                };
+                Block.prototype.equivalentTo = function (node) {
+                    var other;
+                    if (node instanceof Block) {
+                        other = node;
+                        var result = this.type === other.type;
+                        if (result) {
+                            if (this.children.length !== other.children.length) {
+                                return false;
+                            }
+                            else {
+                                for (var i = 0; i < this.children.length; i++) {
+                                    if (!this.children[i].equivalentTo(other.children[i])) {
+                                        return false;
+                                    }
+                                }
+                                return true;
+                            }
+                        }
+                        return false;
+                    }
+                    return false;
+                };
+                Block.prototype.findFirstDescendentSpan = function () {
+                    var current = this;
+                    while (current !== null && current.isBlock) {
+                        var block = current;
+                        if (block.children.length > 0) {
+                            current = block.children[block.children.length - 1];
+                        }
+                        else {
+                            current = null;
+                        }
+                    }
+                    if (current !== null && !current.isBlock) {
+                        return current;
+                    }
+                    return null;
+                };
+                Block.prototype.flatten = function () {
+                    var result;
+                    for (var i = 0; i < this.children.length; i++) {
+                        var node = this.children[i];
+                        if (node.isBlock) {
+                            result = result.concat(node.flatten());
+                        }
+                        else {
+                            result.push(node);
+                        }
+                    }
+                    return result;
+                };
+                Block.prototype.locateOwner = function (change) {
+                    var owner = null;
+                    for (var i = 0; i < this.children.length; i++) {
+                        var node = this.children[i], span = null;
+                        if (node.isBlock) {
+                            owner = node.locateOwner(change);
+                        }
+                        else {
+                            span = node;
+                            if (change.oldPosition < span.start.absoluteIndex) {
+                                break;
+                            }
+                            owner = span;
+                        }
+                        if (owner !== null) {
+                            break;
+                        }
+                    }
+                    return owner;
+                };
+                Block.prototype.toString = function () {
+                    var builder = new StringBuilder();
+                    builder.append(SyntaxTree.BlockType[this._type]);
+                    builder.append(" Block at ");
+                    builder.append(this.start.toString());
+                    builder.append("::");
+                    builder.append(this.length.toString());
+                    builder.append(" (Gen:");
+                    builder.append(this.chunkGenerator.toString());
+                    builder.append(")");
+                    return builder.toString();
+                };
+                return Block;
+            })(SyntaxTree.SyntaxTreeNode);
+            SyntaxTree.Block = Block;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../RazorError.ts" />
+/// <reference path="SyntaxTree/Block.ts" />
+/// <reference path="SyntaxTree/Span.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var ParserVisitor = (function () {
+            function ParserVisitor() {
+            }
+            ParserVisitor.prototype.onComplete = function () {
+            };
+            ParserVisitor.prototype.visitBlock = function (block) {
+                this.visitStartBlock(block);
+                for (var i = 0; i < block.children.length; i++) {
+                    block.children[i].accept(this);
+                }
+                this.visitEndBlock(block);
+            };
+            ParserVisitor.prototype.visitEndBlock = function (block) {
+            };
+            ParserVisitor.prototype.visitError = function (error) {
+            };
+            ParserVisitor.prototype.visitSpan = function (span) {
+            };
+            ParserVisitor.prototype.visitStartBlock = function (block) {
+            };
+            return ParserVisitor;
+        })();
+        Parser.ParserVisitor = ParserVisitor;
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../../Internals/IEquatable.ts" />
+/// <reference path="Block.ts" />
+/// <reference path="../../SourceLocation.ts" />
+/// <reference path="../ParserVisitor.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            var SyntaxTreeNode = (function () {
+                function SyntaxTreeNode() {
+                }
+                SyntaxTreeNode.prototype.accept = function (visitor) { };
+                SyntaxTreeNode.prototype.equals = function (other) {
+                    return false;
+                };
+                SyntaxTreeNode.prototype.equivalentTo = function (node) {
+                    return false;
+                };
+                return SyntaxTreeNode;
+            })();
+            SyntaxTree.SyntaxTreeNode = SyntaxTreeNode;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../SourceLocation.ts" />
+/// <reference path="../Parser/SyntaxTree/SyntaxTreeNode.ts" />
+var Razor;
+(function (Razor) {
+    var Chunks;
+    (function (Chunks) {
+        var Chunk = (function () {
+            function Chunk() {
+            }
+            return Chunk;
+        })();
+        Chunks.Chunk = Chunk;
+    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
+})(Razor || (Razor = {}));
+/// <reference path="Chunk.ts" />
+var Razor;
+(function (Razor) {
+    var Chunks;
+    (function (Chunks) {
+        var LiteralChunk = (function (_super) {
+            __extends(LiteralChunk, _super);
+            function LiteralChunk() {
+                _super.apply(this, arguments);
+            }
+            LiteralChunk.prototype.toString = function () {
+                return [this.start.toString(), ' = ', this.text].join('');
+            };
+            return LiteralChunk;
+        })(Chunks.Chunk);
+        Chunks.LiteralChunk = LiteralChunk;
+    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
+})(Razor || (Razor = {}));
+/// <reference path="IDisposable.ts" />"
+var Razor;
+(function (Razor) {
+    function Using(contextOrDisposable, disposableOrAction, action) {
+        if (arguments.length === 2) {
+            action = disposableOrAction;
+            disposableOrAction = contextOrDisposable;
+            contextOrDisposable = null;
+        }
+        try {
+            action.apply(contextOrDisposable, [disposableOrAction]);
+        }
+        finally {
+            disposableOrAction.dispose();
+        }
+    }
+    Razor.Using = Using;
+})(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            (function (AcceptedCharacters) {
+                AcceptedCharacters[AcceptedCharacters["None"] = 0] = "None";
+                AcceptedCharacters[AcceptedCharacters["NewLine"] = 1] = "NewLine";
+                AcceptedCharacters[AcceptedCharacters["WhiteSpace"] = 2] = "WhiteSpace";
+                AcceptedCharacters[AcceptedCharacters["NonWhiteSpace"] = 4] = "NonWhiteSpace";
+                AcceptedCharacters[AcceptedCharacters["AllWhiteSpace"] = 3] = "AllWhiteSpace";
+                AcceptedCharacters[AcceptedCharacters["Any"] = 7] = "Any";
+                AcceptedCharacters[AcceptedCharacters["AnyExceptNewLine"] = 6] = "AnyExceptNewLine";
+            })(SyntaxTree.AcceptedCharacters || (SyntaxTree.AcceptedCharacters = {}));
+            var AcceptedCharacters = SyntaxTree.AcceptedCharacters;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="SyntaxTreeNode.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            var EquivalenceComparer = (function () {
+                function EquivalenceComparer() {
+                }
+                EquivalenceComparer.prototype.equals = function (nodeX, nodeY) {
+                    if (nodeX === nodeY) {
+                        return true;
+                    }
+                    return (!!nodeX && nodeX.equivalentTo(nodeY));
+                };
+                return EquivalenceComparer;
+            })();
+            SyntaxTree.EquivalenceComparer = EquivalenceComparer;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
 /// <reference path="../Internals/IDisposable.ts" />
 var Razor;
 (function (Razor) {
@@ -786,70 +1880,6 @@ var Razor;
         Text.LookaheadTextReader = LookaheadTextReader;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
-/// <reference path="../Internals/Environment.ts" />
-var Razor;
-(function (Razor) {
-    var Text;
-    (function (Text) {
-        var Environment = Razor.Environment;
-        var StringBuilder = (function () {
-            function StringBuilder(content) {
-                if (!!content) {
-                    this._buffer = content.split('');
-                }
-                else {
-                    this._buffer = [];
-                }
-            }
-            Object.defineProperty(StringBuilder.prototype, "length", {
-                get: function () {
-                    return this._buffer.length;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            StringBuilder.prototype.append = function (content, startIndexOrRepeat, count) {
-                if (!!content && content.length > 1) {
-                    this.appendCore(content, 0, content.length);
-                }
-                else if (!!count) {
-                    this.appendCore(content, startIndexOrRepeat, count);
-                }
-                else if (!!startIndexOrRepeat) {
-                    for (var i = 0; i < startIndexOrRepeat; i++) {
-                        this.appendCore(content[0], 0, 1);
-                    }
-                }
-                else if (!!content) {
-                    this.appendCore(content[0], 0, 1);
-                }
-                return this;
-            };
-            StringBuilder.prototype.appendLine = function (content) {
-                return this.append((content || '') + Environment.NewLine);
-            };
-            StringBuilder.prototype.appendCore = function (content, startIndex, count) {
-                for (var i = startIndex; i < content.length && i < (startIndex + count); i++) {
-                    this._buffer.push(content[i]);
-                }
-            };
-            StringBuilder.prototype.charAt = function (index) {
-                if (index >= this.length) {
-                    throw "Index out of range: " + index;
-                }
-                return this._buffer[index];
-            };
-            StringBuilder.prototype.clear = function () {
-                this._buffer = [];
-            };
-            StringBuilder.prototype.toString = function () {
-                return this._buffer.join("");
-            };
-            return StringBuilder;
-        })();
-        Text.StringBuilder = StringBuilder;
-    })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
 /// <reference path="BacktrackContext.ts" />
 /// <reference path="SourceLocationTracker.ts" />
 /// <reference path="TextReader.ts" />
@@ -1199,183 +2229,6 @@ var Razor;
         Text.TextBufferReader = TextBufferReader;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
-/// <reference path="ITextBuffer.ts" />
-/// <reference path="../Internals/IEquatable.ts" />
-/// <reference path="../Parser/SyntaxTree/Span.ts" />
-var Razor;
-(function (Razor) {
-    var Text;
-    (function (Text) {
-        var Span = Razor.Parser.SyntaxTree.Span;
-        var TextChange = (function () {
-            function TextChange(oldPosition, oldLength, oldBuffer, newPositionOrLength, newLengthOrBuffer, newBuffer) {
-                var newPosition, newLength;
-                if (arguments.length === 5) {
-                    newBuffer = newLengthOrBuffer;
-                    newLength = newPositionOrLength;
-                    newPosition = oldPosition;
-                }
-                else {
-                    newPosition = newPositionOrLength;
-                    newLength = newLengthOrBuffer;
-                }
-                this._oldPosition = oldPosition;
-                this._oldLength = oldLength;
-                this._oldBuffer = oldBuffer;
-                this._newPosition = newPosition;
-                this._newLength = newLength;
-                this._newBuffer = newBuffer;
-            }
-            Object.defineProperty(TextChange.prototype, "isDelete", {
-                get: function () {
-                    return this._oldLength > 0 && this._newLength === 0;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextChange.prototype, "isInsert", {
-                get: function () {
-                    return this._oldLength === 0 && this._newLength > 0;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextChange.prototype, "isReplace", {
-                get: function () {
-                    return this._oldLength > 0 && this._newLength > 0;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextChange.prototype, "newBuffer", {
-                get: function () {
-                    return this._newBuffer;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextChange.prototype, "newLength", {
-                get: function () {
-                    return this._newLength;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextChange.prototype, "newPosition", {
-                get: function () {
-                    return this._newPosition;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextChange.prototype, "newText", {
-                get: function () {
-                    if (!this._newText) {
-                        this._newText = TextChange.getText(this._newBuffer, this._newPosition, this._newLength);
-                    }
-                    return this._newText;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextChange.prototype, "oldBuffer", {
-                get: function () {
-                    return this._oldBuffer;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextChange.prototype, "oldLength", {
-                get: function () {
-                    return this._oldLength;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextChange.prototype, "oldPosition", {
-                get: function () {
-                    return this._oldPosition;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextChange.prototype, "oldText", {
-                get: function () {
-                    if (!this._oldText) {
-                        this._oldText = TextChange.getText(this._oldBuffer, this._oldPosition, this._oldLength);
-                    }
-                    return this._oldText;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            TextChange.prototype.applyChange = function (contentOrSpan, changeOffset) {
-                var content, changeRelativePosition, prefix, suffix;
-                if (contentOrSpan instanceof Span) {
-                    content = contentOrSpan.content;
-                    changeOffset = contentOrSpan.start.absoluteIndex;
-                }
-                else {
-                    content = contentOrSpan;
-                }
-                changeRelativePosition = this.oldPosition - changeOffset;
-                prefix = content.substr(0, changeRelativePosition);
-                suffix = content.substr(changeRelativePosition + changeOffset);
-                return [prefix, this.newText, suffix].join('');
-            };
-            TextChange.prototype.equals = function (other) {
-                if (!!other) {
-                    return this._oldPosition === other.oldPosition &&
-                        this._oldLength === other.oldLength &&
-                        this._newPosition === other.newPosition &&
-                        this._newLength === other.newLength &&
-                        this._oldBuffer === other.oldBuffer &&
-                        this._newBuffer === other.newBuffer;
-                }
-                return false;
-            };
-            TextChange.getText = function (buffer, position, length) {
-                var oldPosition, builder, i = 0, c;
-                if (length === 0) {
-                    return '';
-                }
-                oldPosition = buffer.position;
-                try {
-                    buffer.position = position;
-                    if (length === 1) {
-                        return buffer.read();
-                    }
-                    else {
-                        builder = [];
-                        for (; i < length; i++) {
-                            c = buffer.read();
-                            builder.push(c);
-                        }
-                        return builder.join('');
-                    }
-                }
-                finally {
-                    buffer.position = oldPosition;
-                }
-            };
-            TextChange.prototype.normalize = function () {
-                if (!!this._oldBuffer &&
-                    this.isReplace &&
-                    this._newLength > this._oldLength &&
-                    this._newPosition === this._oldPosition &&
-                    this.newText.indexOf(this.oldText) >= 0) {
-                    return new TextChange(this.oldPosition + this.oldLength, 0, this.oldBuffer, this.oldPosition + this.oldLength, this.newLength - this.oldLength, this.newBuffer);
-                }
-                return this;
-            };
-            TextChange.prototype.toString = function () {
-                return ['(', this.oldPosition, ':', this.oldLength, ' "', this.oldText, '") => (', this.newPosition, ':', this.newLength, ' \"', this.newText, '\")'].join('');
-            };
-            return TextChange;
-        })();
-        Text.TextChange = TextChange;
-    })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
 var Razor;
 (function (Razor) {
     var Text;
@@ -1456,7 +2309,6 @@ var Razor;
         Text.TextDocumentReader = TextDocumentReader;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
-/// <reference path="../../SourceLocation.ts" />
 /// <reference path="ISymbol.ts" />
 /// <reference path="../../SourceLocation.ts" />
 /// <reference path="../../RazorError.ts" />
@@ -1475,6 +2327,13 @@ var Razor;
                     this.type = type;
                     this.errors = errors;
                 }
+                Object.defineProperty(SymbolBase.prototype, "runtimeTypeName", {
+                    get: function () {
+                        return "SymbolBase";
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
                 Object.defineProperty(SymbolBase.prototype, "typeName", {
                     get: function () {
                         return this.type.toString();
@@ -1555,6 +2414,13 @@ var Razor;
                 function HtmlSymbol(start, content, type, errors) {
                     _super.call(this, start, content, type, errors || []);
                 }
+                Object.defineProperty(HtmlSymbol.prototype, "runtimeTypeName", {
+                    get: function () {
+                        return "HtmlSymbol";
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
                 Object.defineProperty(HtmlSymbol.prototype, "typeName", {
                     get: function () {
                         return Symbols.HtmlSymbolType[this.type];
@@ -2250,13 +3116,13 @@ var Razor;
                     _super.call(this, start, content, type, errors || []);
                     this.keyword = keyword || null;
                 }
-                JavaScriptSymbol.prototype.equals = function (other) {
-                    if (!other) {
-                        return false;
-                    }
-                    return _super.prototype.equals.call(this, other) &&
-                        this.keyword === other.keyword;
-                };
+                Object.defineProperty(JavaScriptSymbol.prototype, "runtimeTypeName", {
+                    get: function () {
+                        return "JavaScriptSymbol";
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
                 Object.defineProperty(JavaScriptSymbol.prototype, "typeName", {
                     get: function () {
                         return Symbols.JavaScriptSymbolType[this.type];
@@ -2264,6 +3130,16 @@ var Razor;
                     enumerable: true,
                     configurable: true
                 });
+                JavaScriptSymbol.prototype.equals = function (other) {
+                    if (!other) {
+                        return false;
+                    }
+                    if (!(other instanceof JavaScriptSymbol)) {
+                        return false;
+                    }
+                    return _super.prototype.equals.call(this, other) &&
+                        this.keyword === other.keyword;
+                };
                 return JavaScriptSymbol;
             })(Symbols.SymbolBase);
             Symbols.JavaScriptSymbol = JavaScriptSymbol;

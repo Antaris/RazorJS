@@ -78,7 +78,7 @@ namespace Razor.Parser.SyntaxTree
     {
       this.type = null;
       this.children = [];
-      this.chunkGenerator = ParentChunkGenerator.Null;
+      this.chunkGenerator = new ParentChunkGenerator();
     }
   }
 }

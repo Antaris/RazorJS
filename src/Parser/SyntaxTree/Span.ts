@@ -13,7 +13,7 @@ namespace Razor.Parser.SyntaxTree
 {
   import ISymbol = Razor.Tokenizer.Symbols.ISymbol;
   import ISpanChunkGenerator = Razor.Chunks.Generators.ISpanChunkGenerator;
-  import SpanChunkGenerator = Razor.Chunks.Genetators.SpanChunkGenetaror;
+  import SpanChunkGenerator = Razor.Chunks.Generators.SpanChunkGenerator;
   import StringBuilder = Razor.Text.StringBuilder;
   import SourceLocationTracker = Razor.Text.SourceLocationTracker;
   
@@ -316,7 +316,7 @@ namespace Razor.Parser.SyntaxTree
     {
       this._kind = builder.kind;
       this._symbols = builder.symbols;
-      this._chunkGenerator = builder.chunkGenerator || SpanChunkGenerator.Null;
+      this._chunkGenerator = builder.chunkGenerator || new SpanChunkGenerator();
       this._start = builder.start;
       
       builder.reset();
