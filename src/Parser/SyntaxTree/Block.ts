@@ -3,16 +3,12 @@
 /// <reference path="BlockType.ts" />
 /// <reference path="BlockBuilder.ts" />
 /// <reference path="../../Tokenizer/Symbols/ISymbol.ts" />
-/// <reference path="../../Chunks/Generators/IParentChunkGenerator.ts" />
-/// <reference path="../../Chunks/Generators/ParentChunkGenerator.ts" />
 /// <reference path="../../Text/StringBuilder.ts" />
 /// <reference path="../../Text/TextChange.ts" />
 
 namespace Razor.Parser.SyntaxTree
 {
   import ISymbol = Razor.Tokenizer.Symbols.ISymbol;
-  import IParentChunkGenerator = Razor.Chunks.Generators.IParentChunkGenerator;
-  import ParentChunkGenerator = Razor.Chunks.Generators.ParentChunkGenerator;
   import StringBuilder = Razor.Text.StringBuilder;
   import TextChange = Razor.Text.TextChange;
   
@@ -23,7 +19,7 @@ namespace Razor.Parser.SyntaxTree
   export class Block extends SyntaxTreeNode implements IEquatable<Block>
   {
     private _children: SyntaxTreeNode[];
-    private _chunkGenetator: IParentChunkGenerator;
+    //private _chunkGenetator: IParentChunkGenerator;
     private _type: BlockType;
     
     /**
@@ -33,7 +29,7 @@ namespace Razor.Parser.SyntaxTree
      * @param {SyntaxTreeNode[]} [content] - The content of the block
      * @param {IParentChunkGenerator} [generator] - The parent chunk generator
      */
-    constructor(sourceOrType: BlockBuilder|BlockType, contents?: SyntaxTreeNode[], generator?: IParentChunkGenerator)
+    constructor(sourceOrType: BlockBuilder|BlockType, contents?: SyntaxTreeNode[])//, generator?: IParentChunkGenerator)
     {
       super();
       
@@ -45,7 +41,7 @@ namespace Razor.Parser.SyntaxTree
         source = <BlockBuilder>sourceOrType;
         type = source.type;
         contents = source.children;
-        generator = source.chunkGenerator;
+        //generator = source.chunkGenerator;
       }
       else
       {
@@ -54,7 +50,7 @@ namespace Razor.Parser.SyntaxTree
       
       this._type = type;
       this._children = contents;
-      this._chunkGenetator = generator;
+      //this._chunkGenetator = generator;
       
       for (var i = 0; i < this._children.length; i++)
       {
@@ -79,10 +75,10 @@ namespace Razor.Parser.SyntaxTree
      * @readonly
      * @returns {IParentChunkGenerator}
      */
-    public get chunkGenerator(): IParentChunkGenerator
+    /*public get chunkGenerator(): IParentChunkGenerator
     {
       return this._chunkGenetator;
-    }
+    }*/
     
     /**
      * Gets whether the node is a block.
@@ -165,8 +161,8 @@ namespace Razor.Parser.SyntaxTree
         return false;
       }
       
-      var result = this.type === other.type &&
-                   this.chunkGenerator.equals(other.chunkGenerator);
+      var result = this.type === other.type;// &&
+                   //this.chunkGenerator.equals(other.chunkGenerator);
                    
       if (result)
       {
@@ -324,9 +320,9 @@ namespace Razor.Parser.SyntaxTree
       builder.append(this.start.toString());
       builder.append("::");
       builder.append(this.length.toString());
-      builder.append(" (Gen:");
-      builder.append(this.chunkGenerator.toString());
-      builder.append(")");      
+      //builder.append(" (Gen:");
+      //builder.append(this.chunkGenerator.toString());
+      //builder.append(")");      
       return builder.toString();
     }
   }

@@ -5,15 +5,13 @@
 /// <reference path="SpanKind.ts" />
 /// <reference path="SpanBuilder.ts" />
 /// <reference path="../../Tokenizer/Symbols/ISymbol.ts" />
-/// <reference path="../../Chunks/Generators/ISpanChunkGenerator.ts" />
-/// <reference path="../../Chunks/Generators/SpanChunkGenerator.ts" />
 /// <reference path="../../Text/StringBuilder.ts" />
 
 namespace Razor.Parser.SyntaxTree
 {
   import ISymbol = Razor.Tokenizer.Symbols.ISymbol;
-  import ISpanChunkGenerator = Razor.Chunks.Generators.ISpanChunkGenerator;
-  import SpanChunkGenerator = Razor.Chunks.Generators.SpanChunkGenerator;
+  //import ISpanChunkGenerator = Razor.Chunks.Generators.ISpanChunkGenerator;
+  //import SpanChunkGenerator = Razor.Chunks.Generators.SpanChunkGenerator;
   import StringBuilder = Razor.Text.StringBuilder;
   import SourceLocationTracker = Razor.Text.SourceLocationTracker;
   
@@ -29,7 +27,7 @@ namespace Razor.Parser.SyntaxTree
     private _previous: Span;
     private _next: Span;
     private _content: string;
-    private _chunkGenerator: ISpanChunkGenerator;
+    //private _chunkGenerator: ISpanChunkGenerator;
     private _groupedSymbols: string;
     
     /**
@@ -50,10 +48,10 @@ namespace Razor.Parser.SyntaxTree
      * @readonly
      * @returns {ISpanChunkGenerator}
      */
-    public get chunkGenerator(): ISpanChunkGenerator
+    /*public get chunkGenerator(): ISpanChunkGenerator
     {
       return this._chunkGenerator;
-    }
+    }*/
     
     /**
      * Gets the content of the span
@@ -212,7 +210,7 @@ namespace Razor.Parser.SyntaxTree
       }
      
       var result = this.kind === other.kind &&
-                   this.chunkGenerator.equals(other.chunkGenerator) &&
+                   //this.chunkGenerator.equals(other.chunkGenerator) &&
                    this.content === other.content;
                    
       if (result)
@@ -316,7 +314,7 @@ namespace Razor.Parser.SyntaxTree
     {
       this._kind = builder.kind;
       this._symbols = builder.symbols;
-      this._chunkGenerator = builder.chunkGenerator || new SpanChunkGenerator();
+      //this._chunkGenerator = builder.chunkGenerator || new SpanChunkGenerator();
       this._start = builder.start;
       
       builder.reset();
@@ -345,9 +343,10 @@ namespace Razor.Parser.SyntaxTree
       var builder = new StringBuilder();
       builder.append(SpanKind[<number>this.kind]);
       builder.append("Span at " + this.start.toString() + "::" + this.length.toString() + " - [" + this.content + "]");
-      builder.append(" Gen: <");
-      builder.append(this.chunkGenerator.toString());
-      builder.append("> {");
+      //builder.append(" Gen: <");
+      //builder.append(this.chunkGenerator.toString());
+      //builder.append("> {");
+      builder.append("{");
       builder.append(this._groupedSymbols);
       builder.append("}");      
       return builder.toString();

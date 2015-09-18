@@ -1,13 +1,11 @@
 /// <reference path="SyntaxTreeNode.ts" />
 /// <reference path="BlockType.ts" />
 /// <reference path="Block.ts" />
-/// <reference path="../../Chunks/Generators/IParentChunkGenerator.ts" />
-/// <reference path="../../Chunks/Generators/ParentChunkGenerator.ts" />
 
 namespace Razor.Parser.SyntaxTree
 {
-  import IParentChunkGenerator = Razor.Chunks.Generators.IParentChunkGenerator;
-  import ParentChunkGenerator = Razor.Chunks.Generators.ParentChunkGenerator;
+  //import IParentChunkGenerator = Razor.Chunks.Generators.IParentChunkGenerator;
+  //import ParentChunkGenerator = Razor.Chunks.Generators.ParentChunkGenerator;
   
   /**
    * A builder for creating instances of blocks
@@ -32,7 +30,7 @@ namespace Razor.Parser.SyntaxTree
       {
         this.type = original.type;
         this.children = original.children.slice(0);
-        this.chunkGenerator = original.chunkGenerator;
+        //this.chunkGenerator = original.chunkGenerator;
       }
     }
     
@@ -52,7 +50,7 @@ namespace Razor.Parser.SyntaxTree
      * @property
      * @type {IParentChunkGenerator}
      */
-    public chunkGenerator: IParentChunkGenerator;
+    //public chunkGenerator: IParentChunkGenerator;
       
     /**
      * Gets or sets the block type
@@ -78,7 +76,7 @@ namespace Razor.Parser.SyntaxTree
     {
       this.type = null;
       this.children = [];
-      this.chunkGenerator = new ParentChunkGenerator();
+      //this.chunkGenerator = new ParentChunkGenerator();
     }
   }
 }

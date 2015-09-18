@@ -69,98 +69,20 @@ declare module Razor {
     }
 }
 declare module Razor {
-    class StateResult<T> {
-        constructor(nextOrOutput: State<T> | T, next?: State<T>);
-        hasOutput: boolean;
-        output: T;
-        next: State<T>;
-    }
-}
-declare module Razor {
-    interface State<T> {
-        (): StateResult<T>;
-    }
-}
-declare module Razor {
-    class StateMachine<T> {
-        protected startState: State<T>;
-        protected currentState: State<T>;
-        protected stay(output?: T): StateResult<T>;
-        protected stop(): StateResult<T>;
-        protected transition(outputOrNewState: T | State<T>, newState?: State<T>): StateResult<T>;
-        protected turn(): T;
-    }
-}
-declare module Razor.Parser.SyntaxTree {
-    enum BlockType {
-        Statement = 0,
-        Directive = 1,
-        Functions = 2,
-        Expression = 3,
-        Helper = 4,
-        Markup = 5,
-        Section = 6,
-        Template = 7,
-        Comment = 8,
-        Tag = 9,
-    }
-}
-declare module Razor.Chunks {
-    class ParentChunk extends Chunk {
-        children: Chunk[];
-    }
-}
-declare module Razor.Chunks {
-    class ChunkTree {
-        chunks: Chunk[];
-    }
-}
-declare module Razor.Chunks {
-    import SyntaxTreeNode = Razor.Parser.SyntaxTree.SyntaxTreeNode;
-    class ChunkTreeBuilder {
-        private _parentStack;
-        private _chunkTree;
-        private _lastChunk;
+    class ErrorSink {
+        private _errors;
         constructor();
-        chunkTree: ChunkTree;
-        addChunk(chunk: Chunk, association: SyntaxTreeNode, topLevel?: boolean): void;
-        startParentChunk<T extends ParentChunk>(parentChunk: T, association: SyntaxTreeNode, topLevel?: boolean): T;
-        endParentChunk(): void;
-    }
-}
-declare module Razor.Chunks.Generators {
-    class ChunkGeneratorContext {
-        constructor(context?: ChunkGeneratorContext);
-        chunkTreeBuilder: ChunkTreeBuilder;
-    }
-}
-declare module Razor.Chunks.Generators {
-    import Block = Razor.Parser.SyntaxTree.Block;
-    interface IParentChunkGenerator {
-        generateStartParentChunk(block: Block, context: ChunkGeneratorContext): void;
-        generateEndParentChunk(block: Block, context: ChunkGeneratorContext): void;
-        equals(other: any): boolean;
-    }
-}
-declare module Razor.Chunks.Generators {
-    import Block = Razor.Parser.SyntaxTree.Block;
-    class ParentChunkGenerator implements IParentChunkGenerator {
-        runtimeTypeName: string;
-        generateStartParentChunk(block: Block, context: ChunkGeneratorContext): void;
-        generateEndParentChunk(block: Block, context: ChunkGeneratorContext): void;
-        equals(other: any): boolean;
+        errors: RazorError[];
+        onError(errorOrLocation: RazorError | SourceLocation, message?: string, length?: number): void;
     }
 }
 declare module Razor.Parser.SyntaxTree {
-    import IParentChunkGenerator = Razor.Chunks.Generators.IParentChunkGenerator;
-    class BlockBuilder {
-        private _children;
-        constructor(original?: Block);
-        children: SyntaxTreeNode[];
-        chunkGenerator: IParentChunkGenerator;
-        type: BlockType;
-        build(): Block;
-        reset(): void;
+    enum SpanKind {
+        Transition = 0,
+        MetaCode = 1,
+        Comment = 2,
+        Code = 3,
+        Markup = 4,
     }
 }
 declare module Razor.Tokenizer.Symbols {
@@ -185,6 +107,102 @@ declare module Razor.Text {
         charAt(index: number): string;
         clear(): void;
         toString(): string;
+    }
+}
+declare module Razor.Parser.SyntaxTree {
+    import ISymbol = Razor.Tokenizer.Symbols.ISymbol;
+    class SpanBuilder {
+        private _symbols;
+        private _tracker;
+        constructor(original?: Span);
+        kind: SpanKind;
+        start: SourceLocation;
+        symbols: ISymbol[];
+        accept(symbol: ISymbol): void;
+        build(): Span;
+        clearSymbols(): void;
+        reset(): void;
+    }
+}
+declare module Razor.Parser.SyntaxTree {
+    import ISymbol = Razor.Tokenizer.Symbols.ISymbol;
+    class Span extends SyntaxTreeNode implements IEquatable<Span> {
+        private _start;
+        private _kind;
+        private _symbols;
+        private _previous;
+        private _next;
+        private _content;
+        private _groupedSymbols;
+        constructor(builder: SpanBuilder);
+        content: string;
+        isBlock: boolean;
+        kind: SpanKind;
+        length: number;
+        next: Span;
+        previous: Span;
+        start: SourceLocation;
+        symbols: ISymbol[];
+        accept(visitor: ParserVisitor): void;
+        change(changes: (builder: SpanBuilder) => void): void;
+        changeStart(newStart: SourceLocation): void;
+        equals(other: Span): boolean;
+        equivalentTo(node: SyntaxTreeNode): boolean;
+        static getContent(symbols: ISymbol[]): string;
+        static getGroupedSymbols(symbols: ISymbol[]): string;
+        replaceWith(builder: SpanBuilder): void;
+        setStart(newStart: SourceLocation): void;
+        toString(): string;
+    }
+}
+declare module Razor.Parser {
+    import RazorError = Razor.RazorError;
+    import Block = Razor.Parser.SyntaxTree.Block;
+    import Span = Razor.Parser.SyntaxTree.Span;
+    import ParserResults = Razor.ParserResults;
+    class ParserVisitor {
+        onComplete(): void;
+        visit(result: ParserResults): void;
+        visitBlock(block: Block): void;
+        visitEndBlock(block: Block): void;
+        visitError(error: RazorError): void;
+        visitSpan(span: Span): void;
+        visitStartBlock(block: Block): void;
+    }
+}
+declare module Razor.Parser.SyntaxTree {
+    class SyntaxTreeNode implements IEquatable<SyntaxTreeNode> {
+        isBlock: boolean;
+        length: number;
+        parent: Block;
+        start: SourceLocation;
+        accept(visitor: ParserVisitor): void;
+        equals(other: SyntaxTreeNode): boolean;
+        equivalentTo(node: SyntaxTreeNode): boolean;
+    }
+}
+declare module Razor.Parser.SyntaxTree {
+    enum BlockType {
+        Statement = 0,
+        Directive = 1,
+        Functions = 2,
+        Expression = 3,
+        Helper = 4,
+        Markup = 5,
+        Section = 6,
+        Template = 7,
+        Comment = 8,
+        Tag = 9,
+    }
+}
+declare module Razor.Parser.SyntaxTree {
+    class BlockBuilder {
+        private _children;
+        constructor(original?: Block);
+        children: SyntaxTreeNode[];
+        type: BlockType;
+        build(): Block;
+        reset(): void;
     }
 }
 declare module Razor {
@@ -225,82 +243,6 @@ declare module Razor.Text {
         toDocument(): ITextDocument;
     }
 }
-declare module Razor.Parser.SyntaxTree {
-    enum SpanKind {
-        Transition = 0,
-        MetaCode = 1,
-        Comment = 2,
-        Code = 3,
-        Markup = 4,
-    }
-}
-declare module Razor.Chunks.Generators {
-    import Span = Razor.Parser.SyntaxTree.Span;
-    interface ISpanChunkGenerator {
-        generateChunk(span: Span, context: ChunkGeneratorContext): void;
-        equals(other: any): boolean;
-    }
-}
-declare module Razor.Chunks.Generators {
-    import Span = Razor.Parser.SyntaxTree.Span;
-    class SpanChunkGenerator implements ISpanChunkGenerator {
-        runtimeTypeName: string;
-        generateChunk(span: Span, context: ChunkGeneratorContext): void;
-        equals(other: any): boolean;
-        toString(): string;
-    }
-}
-declare module Razor.Parser.SyntaxTree {
-    import ISymbol = Razor.Tokenizer.Symbols.ISymbol;
-    import ISpanChunkGenerator = Razor.Chunks.Generators.ISpanChunkGenerator;
-    class SpanBuilder {
-        private _symbols;
-        private _tracker;
-        constructor(original?: Span);
-        chunkGenerator: ISpanChunkGenerator;
-        kind: SpanKind;
-        start: SourceLocation;
-        symbols: ISymbol[];
-        accept(symbol: ISymbol): void;
-        build(): Span;
-        clearSymbols(): void;
-        reset(): void;
-    }
-}
-declare module Razor.Parser.SyntaxTree {
-    import ISymbol = Razor.Tokenizer.Symbols.ISymbol;
-    import ISpanChunkGenerator = Razor.Chunks.Generators.ISpanChunkGenerator;
-    class Span extends SyntaxTreeNode implements IEquatable<Span> {
-        private _start;
-        private _kind;
-        private _symbols;
-        private _previous;
-        private _next;
-        private _content;
-        private _chunkGenerator;
-        private _groupedSymbols;
-        constructor(builder: SpanBuilder);
-        chunkGenerator: ISpanChunkGenerator;
-        content: string;
-        isBlock: boolean;
-        kind: SpanKind;
-        length: number;
-        next: Span;
-        previous: Span;
-        start: SourceLocation;
-        symbols: ISymbol[];
-        accept(visitor: ParserVisitor): void;
-        change(changes: (builder: SpanBuilder) => void): void;
-        changeStart(newStart: SourceLocation): void;
-        equals(other: Span): boolean;
-        equivalentTo(node: SyntaxTreeNode): boolean;
-        static getContent(symbols: ISymbol[]): string;
-        static getGroupedSymbols(symbols: ISymbol[]): string;
-        replaceWith(builder: SpanBuilder): void;
-        setStart(newStart: SourceLocation): void;
-        toString(): string;
-    }
-}
 declare module Razor.Text {
     import Span = Razor.Parser.SyntaxTree.Span;
     class TextChange implements IEquatable<TextChange> {
@@ -332,15 +274,12 @@ declare module Razor.Text {
     }
 }
 declare module Razor.Parser.SyntaxTree {
-    import IParentChunkGenerator = Razor.Chunks.Generators.IParentChunkGenerator;
     import TextChange = Razor.Text.TextChange;
     class Block extends SyntaxTreeNode implements IEquatable<Block> {
         private _children;
-        private _chunkGenetator;
         private _type;
-        constructor(sourceOrType: BlockBuilder | BlockType, contents?: SyntaxTreeNode[], generator?: IParentChunkGenerator);
+        constructor(sourceOrType: BlockBuilder | BlockType, contents?: SyntaxTreeNode[]);
         children: SyntaxTreeNode[];
-        chunkGenerator: IParentChunkGenerator;
         isBlock: boolean;
         length: number;
         start: SourceLocation;
@@ -354,60 +293,113 @@ declare module Razor.Parser.SyntaxTree {
         toString(): string;
     }
 }
-declare module Razor.Parser {
-    import RazorError = Razor.RazorError;
+declare module Razor {
     import Block = Razor.Parser.SyntaxTree.Block;
-    import Span = Razor.Parser.SyntaxTree.Span;
-    class ParserVisitor {
-        onComplete(): void;
-        visitBlock(block: Block): void;
-        visitEndBlock(block: Block): void;
-        visitError(error: RazorError): void;
-        visitSpan(span: Span): void;
-        visitStartBlock(block: Block): void;
+    import ErrorSink = Razor.ErrorSink;
+    import RazorError = Razor.RazorError;
+    class ParserResults {
+        private _success;
+        private _document;
+        private _errorSink;
+        private _tagHelperDescriptors;
+        private _prefix;
+        constructor(document: Block, tagHelperDescriptors: any[], errorSink: ErrorSink, success?: boolean);
+        document: Block;
+        errorSink: ErrorSink;
+        parserErrors: RazorError[];
+        prefix: string;
+        success: boolean;
+        tagHelperDescriptors: any[];
     }
 }
-declare module Razor.Parser.SyntaxTree {
-    class SyntaxTreeNode implements IEquatable<SyntaxTreeNode> {
-        isBlock: boolean;
-        length: number;
-        parent: Block;
-        start: SourceLocation;
-        accept(visitor: ParserVisitor): void;
-        equals(other: SyntaxTreeNode): boolean;
-        equivalentTo(node: SyntaxTreeNode): boolean;
+declare module Razor {
+    class StateResult<T> {
+        constructor(nextOrOutput: State<T> | T, next?: State<T>);
+        hasOutput: boolean;
+        output: T;
+        next: State<T>;
     }
 }
-declare module Razor.Chunks {
-    import SyntaxTreeNode = Razor.Parser.SyntaxTree.SyntaxTreeNode;
-    class Chunk {
-        association: SyntaxTreeNode;
-        start: SourceLocation;
+declare module Razor {
+    interface State<T> {
+        (): StateResult<T>;
     }
 }
-declare module Razor.Chunks {
-    class LiteralChunk extends Chunk {
-        text: string;
-        toString(): string;
+declare module Razor {
+    class StateMachine<T> {
+        protected startState: State<T>;
+        protected currentState: State<T>;
+        protected stay(output?: T): StateResult<T>;
+        protected stop(): StateResult<T>;
+        protected transition(outputOrNewState: T | State<T>, newState?: State<T>): StateResult<T>;
+        protected turn(): T;
+    }
+}
+declare module Razor {
+    class Tuple<TFirst, TSecond> {
+        item1: TFirst;
+        constructor(item1: TFirst, item2: TSecond);
     }
 }
 declare module Razor {
     function Using(contextOrDisposable: any | IDisposable, disposableOrAction: IDisposable | Function, action?: (disposable: IDisposable) => void): void;
 }
-declare module Razor.Parser.SyntaxTree {
-    enum AcceptedCharacters {
-        None = 0,
-        NewLine = 1,
-        WhiteSpace = 2,
-        NonWhiteSpace = 4,
-        AllWhiteSpace = 3,
-        Any = 7,
-        AnyExceptNewLine = 6,
+declare module Razor.Parser {
+    import Block = Razor.Parser.SyntaxTree.Block;
+    import ErrorSink = Razor.ErrorSink;
+    class RewritingContext {
+        private _errorSink;
+        private _errors;
+        constructor(syntaxTree: Block, errorSink: ErrorSink);
+        errorSink: ErrorSink;
+        syntaxTree: Block;
     }
 }
-declare module Razor.Parser.SyntaxTree {
-    class EquivalenceComparer {
-        equals(nodeX: SyntaxTreeNode, nodeY: SyntaxTreeNode): boolean;
+declare module Razor.Parser {
+    interface ISyntaxTreeRewriter {
+        rewrite(context: RewritingContext): void;
+    }
+}
+declare module Razor.Text {
+    class LocationTagged<T> implements IEquatable<LocationTagged<T>> {
+        private _location;
+        private _value;
+        constructor(value: T, locationOrOffset: SourceLocation | number, line?: number, col?: number);
+        location: SourceLocation;
+        value: T;
+        equals(other: LocationTagged<T>): boolean;
+        toString(): string;
+        toFormattedString(): string;
+    }
+}
+declare module Razor.Tokenizer.Symbols {
+    import LocationTagged = Razor.Text.LocationTagged;
+    class SymbolBase<T> implements ISymbol, IEquatable<SymbolBase<T>> {
+        start: SourceLocation;
+        content: string;
+        type: T;
+        errors: RazorError[];
+        constructor(start: SourceLocation, content: string, type: T, errors: RazorError[]);
+        runtimeTypeName: string;
+        typeName: string;
+        changeStart(newStart: SourceLocation): void;
+        getContent(): LocationTagged<string>;
+        equals(other: SymbolBase<T>): boolean;
+        offsetStart(documentStart: SourceLocation): void;
+        toString(): string;
+    }
+}
+declare module Razor.Tokenizer.Symbols {
+    enum KnownSymbolType {
+        WhiteSpace = 0,
+        Newline = 1,
+        Identifier = 2,
+        Keyword = 3,
+        Transition = 4,
+        Unknown = 5,
+        CommentStart = 6,
+        CommentStar = 7,
+        CommentBody = 8,
     }
 }
 declare module Razor.Text {
@@ -474,6 +466,102 @@ declare module Razor.Text {
         toDocument(): ITextDocument;
     }
 }
+declare module Razor.Parser {
+    import ITokenizer = Razor.Tokenizer.ITokenizer;
+    import ISymbol = Razor.Tokenizer.Symbols.ISymbol;
+    class LanguageCharacteristics<TTokenizer extends ITokenizer, TSymbol extends ISymbol, TSymbolType> {
+    }
+}
+declare module Razor.Parser.SyntaxTree {
+    enum AcceptedCharacters {
+        None = 0,
+        NewLine = 1,
+        WhiteSpace = 2,
+        NonWhiteSpace = 4,
+        AllWhiteSpace = 3,
+        Any = 7,
+        AnyExceptNewLine = 6,
+    }
+}
+declare module Razor.Text {
+    class TextDocumentReader extends TextReader implements ITextDocument {
+        private _document;
+        constructor(source: ITextDocument);
+        document: ITextDocument;
+        length: number;
+        location: SourceLocation;
+        position: number;
+        beginLookahead(): LookaheadToken;
+        peek(): string | number;
+        read(buffer?: string[], index?: number, count?: number): string | number;
+        seek(count: number): void;
+        toDocument(): ITextDocument;
+    }
+}
+declare module Razor.Parser {
+    import BlockBuilder = Razor.Parser.SyntaxTree.BlockBuilder;
+    import BlockType = Razor.Parser.SyntaxTree.BlockType;
+    import Span = Razor.Parser.SyntaxTree.Span;
+    import AcceptedCharacters = Razor.Parser.SyntaxTree.AcceptedCharacters;
+    import ErrorSink = Razor.ErrorSink;
+    import ITextDocument = Razor.Text.ITextDocument;
+    import TextDocumentReader = Razor.Text.TextDocumentReader;
+    import ParserBase = Razor.Parser.ParserBase;
+    import RazorError = Razor.RazorError;
+    import IDisposable = Razor.IDisposable;
+    import SourceLocation = Razor.SourceLocation;
+    import ParserResults = Razor.ParserResults;
+    class ParserContext {
+        private _blockStack;
+        private _errorSink;
+        private _source;
+        private _codeParser;
+        private _markupParser;
+        private _activeParser;
+        private _lastSpan;
+        private _terminated;
+        constructor(source: ITextDocument, codeParser: ParserBase, markupParser: ParserBase, activeParser: ParserBase, errorSink: ErrorSink);
+        activeParser: ParserBase;
+        blockStack: BlockBuilder[];
+        codeParser: ParserBase;
+        currentBlock: BlockBuilder;
+        currentCharacter: string;
+        endOfFile: boolean;
+        errors: RazorError[];
+        lastAcceptedCharacters: AcceptedCharacters;
+        lastSpan: Span;
+        markupParser: ParserBase;
+        nullGeneratedWhitespaceAndNewLine: boolean;
+        source: TextDocumentReader;
+        whitespaceIsSignificantToAncestorBlock: boolean;
+        addSpan(span: Span): void;
+        completeParse(): ParserResults;
+        endBlock(): void;
+        isWithin(type: BlockType): boolean;
+        onError(errorOrLocation: RazorError | SourceLocation, message?: string, length?: number): void;
+        startBlock(blockType?: BlockType): IDisposable;
+        switchActiveParser(): void;
+    }
+}
+declare module Razor.Parser {
+    import SpanBuilder = Razor.Parser.SyntaxTree.SpanBuilder;
+    import SourceLocation = Razor.SourceLocation;
+    import Tuple = Razor.Tuple;
+    class ParserBase {
+        context: ParserContext;
+        isMarkupParser: boolean;
+        otherParser: ParserBase;
+        buildSpan(span: SpanBuilder, start: SourceLocation, content: string): void;
+        parseBlock(): void;
+        parseDocument(): void;
+        parseSection(nestingSequences: Tuple<string, string>, caseSensitive: boolean): void;
+    }
+}
+declare module Razor.Parser.SyntaxTree {
+    class EquivalenceComparer {
+        equals(nodeX: SyntaxTreeNode, nodeY: SyntaxTreeNode): boolean;
+    }
+}
 declare module Razor.Tests {
     import ITextBuffer = Razor.Text.ITextBuffer;
     import ITextDocument = Razor.Text.ITextDocument;
@@ -532,18 +620,6 @@ declare module Razor.Text {
     }
 }
 declare module Razor.Text {
-    class LocationTagged<T> implements IEquatable<LocationTagged<T>> {
-        private _location;
-        private _value;
-        constructor(value: T, locationOrOffset: SourceLocation | number, line?: number, col?: number);
-        location: SourceLocation;
-        value: T;
-        equals(other: LocationTagged<T>): boolean;
-        toString(): string;
-        toFormattedString(): string;
-    }
-}
-declare module Razor.Text {
     class SourceSpan {
         begin: SourceLocation;
         end: SourceLocation;
@@ -581,38 +657,6 @@ declare module Razor.Text {
     enum TextChangeType {
         Insert = 0,
         Remove = 1,
-    }
-}
-declare module Razor.Text {
-    class TextDocumentReader extends TextReader implements ITextDocument {
-        private _document;
-        constructor(source: ITextDocument);
-        document: ITextDocument;
-        length: number;
-        location: SourceLocation;
-        position: number;
-        beginLookahead(): LookaheadToken;
-        peek(): string | number;
-        read(buffer?: string[], index?: number, count?: number): string | number;
-        seek(count: number): void;
-        toDocument(): ITextDocument;
-    }
-}
-declare module Razor.Tokenizer.Symbols {
-    import LocationTagged = Razor.Text.LocationTagged;
-    class SymbolBase<T> implements ISymbol, IEquatable<SymbolBase<T>> {
-        start: SourceLocation;
-        content: string;
-        type: T;
-        errors: RazorError[];
-        constructor(start: SourceLocation, content: string, type: T, errors: RazorError[]);
-        runtimeTypeName: string;
-        typeName: string;
-        changeStart(newStart: SourceLocation): void;
-        getContent(): LocationTagged<string>;
-        equals(other: SymbolBase<T>): boolean;
-        offsetStart(documentStart: SourceLocation): void;
-        toString(): string;
     }
 }
 declare module Razor.Tokenizer.Symbols {
@@ -917,18 +961,5 @@ declare module Razor.Tokenizer {
         tokenizer: TTokenizer;
         next(): boolean;
         putBack(symbol: TSymbol): void;
-    }
-}
-declare module Razor.Tokenizer.Symbols {
-    enum KnownSymbolType {
-        WhiteSpace = 0,
-        Newline = 1,
-        Identifier = 2,
-        Keyword = 3,
-        Transition = 4,
-        Unknown = 5,
-        CommentStart = 6,
-        CommentStar = 7,
-        CommentBody = 8,
     }
 }

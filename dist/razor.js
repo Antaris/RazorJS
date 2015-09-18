@@ -213,62 +213,34 @@ var Razor;
     })();
     Razor.RazorError = RazorError;
 })(Razor || (Razor = {}));
-/// <reference path="State.ts" />
+/// <reference path="RazorError.ts" />
+/// <reference path="SourceLocation.ts" />
 var Razor;
 (function (Razor) {
-    var StateResult = (function () {
-        function StateResult(nextOrOutput, next) {
-            if (typeof nextOrOutput === "function") {
-                this.next = nextOrOutput;
-                this.hasOutput = false;
-                this.output = null;
+    var ErrorSink = (function () {
+        function ErrorSink() {
+            this._errors = [];
+        }
+        Object.defineProperty(ErrorSink.prototype, "errors", {
+            get: function () {
+                return this._errors;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        ErrorSink.prototype.onError = function (errorOrLocation, message, length) {
+            var error;
+            if (errorOrLocation instanceof Razor.RazorError) {
+                error = errorOrLocation;
             }
             else {
-                this.next = next;
-                this.hasOutput = true;
-                this.output = nextOrOutput;
+                error = new Razor.RazorError(message, errorOrLocation, length);
             }
-        }
-        return StateResult;
+            this._errors.push(error);
+        };
+        return ErrorSink;
     })();
-    Razor.StateResult = StateResult;
-})(Razor || (Razor = {}));
-/// <reference path="StateResult.ts" />
-/// <reference path="State.ts" />
-/// <reference path="StateResult.ts" />
-var Razor;
-(function (Razor) {
-    var StateMachine = (function () {
-        function StateMachine() {
-        }
-        StateMachine.prototype.stay = function (output) {
-            return (arguments.length)
-                ? new Razor.StateResult(output, this.currentState)
-                : new Razor.StateResult(this.currentState);
-        };
-        StateMachine.prototype.stop = function () {
-            return null;
-        };
-        StateMachine.prototype.transition = function (outputOrNewState, newState) {
-            return new Razor.StateResult(outputOrNewState, newState);
-        };
-        StateMachine.prototype.turn = function () {
-            if (!!this.currentState) {
-                var result;
-                do {
-                    result = this.currentState();
-                    this.currentState = result.next;
-                } while (!!result && !result.hasOutput);
-                if (!result) {
-                    return null;
-                }
-                return result.output;
-            }
-            return null;
-        };
-        return StateMachine;
-    })();
-    Razor.StateMachine = StateMachine;
+    Razor.ErrorSink = ErrorSink;
 })(Razor || (Razor = {}));
 var Razor;
 (function (Razor) {
@@ -276,207 +248,14 @@ var Razor;
     (function (Parser) {
         var SyntaxTree;
         (function (SyntaxTree) {
-            (function (BlockType) {
-                BlockType[BlockType["Statement"] = 0] = "Statement";
-                BlockType[BlockType["Directive"] = 1] = "Directive";
-                BlockType[BlockType["Functions"] = 2] = "Functions";
-                BlockType[BlockType["Expression"] = 3] = "Expression";
-                BlockType[BlockType["Helper"] = 4] = "Helper";
-                BlockType[BlockType["Markup"] = 5] = "Markup";
-                BlockType[BlockType["Section"] = 6] = "Section";
-                BlockType[BlockType["Template"] = 7] = "Template";
-                BlockType[BlockType["Comment"] = 8] = "Comment";
-                BlockType[BlockType["Tag"] = 9] = "Tag";
-            })(SyntaxTree.BlockType || (SyntaxTree.BlockType = {}));
-            var BlockType = SyntaxTree.BlockType;
-        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
-    })(Parser = Razor.Parser || (Razor.Parser = {}));
-})(Razor || (Razor = {}));
-/// <reference path="Chunk.ts" />
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    __.prototype = b.prototype;
-    d.prototype = new __();
-};
-var Razor;
-(function (Razor) {
-    var Chunks;
-    (function (Chunks) {
-        var ParentChunk = (function (_super) {
-            __extends(ParentChunk, _super);
-            function ParentChunk() {
-                _super.apply(this, arguments);
-                this.children = [];
-            }
-            return ParentChunk;
-        })(Chunks.Chunk);
-        Chunks.ParentChunk = ParentChunk;
-    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
-})(Razor || (Razor = {}));
-/// <reference path="Chunk.ts" />
-var Razor;
-(function (Razor) {
-    var Chunks;
-    (function (Chunks) {
-        var ChunkTree = (function () {
-            function ChunkTree() {
-                this.chunks = [];
-            }
-            return ChunkTree;
-        })();
-        Chunks.ChunkTree = ChunkTree;
-    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../SourceLocation.ts" />
-/// <reference path="../Parser/SyntaxTree/SyntaxTreeNode.ts" />
-/// <reference path="Chunk.ts" />
-/// <reference path="ParentChunk.ts" />
-/// <reference path="ChunkTree.ts" />
-var Razor;
-(function (Razor) {
-    var Chunks;
-    (function (Chunks) {
-        var ChunkTreeBuilder = (function () {
-            function ChunkTreeBuilder() {
-                this._parentStack = [];
-                this._chunkTree = new Chunks.ChunkTree();
-            }
-            Object.defineProperty(ChunkTreeBuilder.prototype, "chunkTree", {
-                get: function () {
-                    return this._chunkTree;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            ChunkTreeBuilder.prototype.addChunk = function (chunk, association, topLevel) {
-                topLevel = topLevel || false;
-                this._lastChunk = chunk;
-                chunk.association = association;
-                chunk.start = association.start;
-                if (this._parentStack.length === 0 || topLevel) {
-                    this.chunkTree.chunks.push(chunk);
-                }
-                else {
-                    this._parentStack[this._parentStack.length - 1].children.push(chunk);
-                }
-            };
-            ChunkTreeBuilder.prototype.startParentChunk = function (parentChunk, association, topLevel) {
-                this.addChunk(parentChunk, association, topLevel);
-                this._parentStack.push(parentChunk);
-                return parentChunk;
-            };
-            ChunkTreeBuilder.prototype.endParentChunk = function () {
-                this._lastChunk = this._parentStack.pop();
-            };
-            return ChunkTreeBuilder;
-        })();
-        Chunks.ChunkTreeBuilder = ChunkTreeBuilder;
-    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../ChunkTreeBuilder.ts" />
-var Razor;
-(function (Razor) {
-    var Chunks;
-    (function (Chunks) {
-        var Generators;
-        (function (Generators) {
-            var ChunkGeneratorContext = (function () {
-                function ChunkGeneratorContext(context) {
-                    if (!context) {
-                        this.chunkTreeBuilder = new Chunks.ChunkTreeBuilder();
-                    }
-                    else {
-                        this.chunkTreeBuilder = context.chunkTreeBuilder;
-                    }
-                }
-                return ChunkGeneratorContext;
-            })();
-            Generators.ChunkGeneratorContext = ChunkGeneratorContext;
-        })(Generators = Chunks.Generators || (Chunks.Generators = {}));
-    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
-})(Razor || (Razor = {}));
-/// <reference path="ChunkGeneratorContext.ts" />
-/// <reference path="../../Parser/SyntaxTree/Block.ts" />
-/// <reference path="ChunkGeneratorContext.ts" />
-/// <reference path="IParentChunkGenerator.ts" />
-/// <reference path="../../Parser/SyntaxTree/Block.ts" />
-var Razor;
-(function (Razor) {
-    var Chunks;
-    (function (Chunks) {
-        var Generators;
-        (function (Generators) {
-            var ParentChunkGenerator = (function () {
-                function ParentChunkGenerator() {
-                }
-                Object.defineProperty(ParentChunkGenerator.prototype, "runtimeTypeName", {
-                    get: function () {
-                        return "ParentChunkGenerator";
-                    },
-                    enumerable: true,
-                    configurable: true
-                });
-                ParentChunkGenerator.prototype.generateStartParentChunk = function (block, context) {
-                };
-                ParentChunkGenerator.prototype.generateEndParentChunk = function (block, context) {
-                };
-                ParentChunkGenerator.prototype.equals = function (other) {
-                    if (!other) {
-                        return false;
-                    }
-                    if (!(other instanceof ParentChunkGenerator)) {
-                        return false;
-                    }
-                    return this.runtimeTypeName === other.runtimeTypeName;
-                };
-                return ParentChunkGenerator;
-            })();
-            Generators.ParentChunkGenerator = ParentChunkGenerator;
-        })(Generators = Chunks.Generators || (Chunks.Generators = {}));
-    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
-})(Razor || (Razor = {}));
-/// <reference path="SyntaxTreeNode.ts" />
-/// <reference path="BlockType.ts" />
-/// <reference path="Block.ts" />
-/// <reference path="../../Chunks/Generators/IParentChunkGenerator.ts" />
-/// <reference path="../../Chunks/Generators/ParentChunkGenerator.ts" />
-var Razor;
-(function (Razor) {
-    var Parser;
-    (function (Parser) {
-        var SyntaxTree;
-        (function (SyntaxTree) {
-            var ParentChunkGenerator = Razor.Chunks.Generators.ParentChunkGenerator;
-            var BlockBuilder = (function () {
-                function BlockBuilder(original) {
-                    if (!original) {
-                        this.reset();
-                    }
-                    else {
-                        this.type = original.type;
-                        this.children = original.children.slice(0);
-                        this.chunkGenerator = original.chunkGenerator;
-                    }
-                }
-                Object.defineProperty(BlockBuilder.prototype, "children", {
-                    get: function () {
-                        return this._children;
-                    },
-                    enumerable: true,
-                    configurable: true
-                });
-                BlockBuilder.prototype.build = function () {
-                    return new SyntaxTree.Block(this);
-                };
-                BlockBuilder.prototype.reset = function () {
-                    this.type = null;
-                    this.children = [];
-                    this.chunkGenerator = new ParentChunkGenerator();
-                };
-                return BlockBuilder;
-            })();
-            SyntaxTree.BlockBuilder = BlockBuilder;
+            (function (SpanKind) {
+                SpanKind[SpanKind["Transition"] = 0] = "Transition";
+                SpanKind[SpanKind["MetaCode"] = 1] = "MetaCode";
+                SpanKind[SpanKind["Comment"] = 2] = "Comment";
+                SpanKind[SpanKind["Code"] = 3] = "Code";
+                SpanKind[SpanKind["Markup"] = 4] = "Markup";
+            })(SyntaxTree.SpanKind || (SyntaxTree.SpanKind = {}));
+            var SpanKind = SyntaxTree.SpanKind;
         })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
     })(Parser = Razor.Parser || (Razor.Parser = {}));
 })(Razor || (Razor = {}));
@@ -545,109 +324,6 @@ var Razor;
         Text.StringBuilder = StringBuilder;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
-/// <reference path="IDisposable.ts" />
-var Razor;
-(function (Razor) {
-    var DisposableAction = (function () {
-        function DisposableAction(action, context) {
-            this._action = action;
-            this._context = context || null;
-        }
-        DisposableAction.prototype.dispose = function () {
-            this._action.apply(this._context, []);
-        };
-        return DisposableAction;
-    })();
-    Razor.DisposableAction = DisposableAction;
-})(Razor || (Razor = {}));
-/// <reference path="../Internals/DisposableAction.ts" />
-var Razor;
-(function (Razor) {
-    var Text;
-    (function (Text) {
-        var LookaheadToken = (function (_super) {
-            __extends(LookaheadToken, _super);
-            function LookaheadToken(action, context) {
-                _super.call(this, action, context);
-                this._accepted = false;
-            }
-            LookaheadToken.prototype.accept = function () {
-                this._accepted = true;
-            };
-            LookaheadToken.prototype.dispose = function () {
-                if (!this._accepted) {
-                    _super.prototype.dispose.call(this);
-                }
-            };
-            return LookaheadToken;
-        })(Razor.DisposableAction);
-        Text.LookaheadToken = LookaheadToken;
-    })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../SourceLocation.ts" />
-/// <reference path="ITextBuffer.ts" />
-/// <reference path="LookaheadToken.ts" />
-/// <reference path="ITextDocument.ts" />"
-var Razor;
-(function (Razor) {
-    var Parser;
-    (function (Parser) {
-        var SyntaxTree;
-        (function (SyntaxTree) {
-            (function (SpanKind) {
-                SpanKind[SpanKind["Transition"] = 0] = "Transition";
-                SpanKind[SpanKind["MetaCode"] = 1] = "MetaCode";
-                SpanKind[SpanKind["Comment"] = 2] = "Comment";
-                SpanKind[SpanKind["Code"] = 3] = "Code";
-                SpanKind[SpanKind["Markup"] = 4] = "Markup";
-            })(SyntaxTree.SpanKind || (SyntaxTree.SpanKind = {}));
-            var SpanKind = SyntaxTree.SpanKind;
-        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
-    })(Parser = Razor.Parser || (Razor.Parser = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../../Internals/IEquatable.ts" />
-/// <reference path="ChunkGeneratorContext.ts" />
-/// <reference path="../../Parser/SyntaxTree/Span.ts" />
-/// <reference path="ChunkGeneratorContext.ts" />
-/// <reference path="ISpanChunkGenerator.ts" />
-/// <reference path="../../Parser/SyntaxTree/Span.ts" />
-var Razor;
-(function (Razor) {
-    var Chunks;
-    (function (Chunks) {
-        var Generators;
-        (function (Generators) {
-            var SpanChunkGenerator = (function () {
-                function SpanChunkGenerator() {
-                }
-                Object.defineProperty(SpanChunkGenerator.prototype, "runtimeTypeName", {
-                    get: function () {
-                        return "SpanChunkGenerator";
-                    },
-                    enumerable: true,
-                    configurable: true
-                });
-                SpanChunkGenerator.prototype.generateChunk = function (span, context) {
-                };
-                SpanChunkGenerator.prototype.equals = function (other) {
-                    if (!other) {
-                        return false;
-                    }
-                    if (!(other instanceof SpanChunkGenerator)) {
-                        return false;
-                    }
-                    return this.runtimeTypeName === other.runtimeTypeName;
-                };
-                SpanChunkGenerator.prototype.toString = function () {
-                    var typeName = this.runtimeTypeName;
-                    return (typeName === "SpanChunkGenerator" ? "None" : typeName);
-                };
-                return SpanChunkGenerator;
-            })();
-            Generators.SpanChunkGenerator = SpanChunkGenerator;
-        })(Generators = Chunks.Generators || (Chunks.Generators = {}));
-    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
-})(Razor || (Razor = {}));
 /// <reference path="../../Internals/IEquatable.ts" />
 /// <reference path="../../SourceLocation.ts" />
 /// <reference path="../../Text/SourceLocationTracker.ts" />
@@ -655,8 +331,6 @@ var Razor;
 /// <reference path="SpanKind.ts" />
 /// <reference path="Span.ts" />
 /// <reference path="../../Tokenizer/Symbols/ISymbol.ts" />
-/// <reference path="../../Chunks/Generators/ISpanChunkGenerator.ts" />
-/// <reference path="../../Chunks/Generators/SpanChunkGenerator.ts" />
 /// <reference path="../../Text/StringBuilder.ts" />
 var Razor;
 (function (Razor) {
@@ -664,7 +338,6 @@ var Razor;
     (function (Parser) {
         var SyntaxTree;
         (function (SyntaxTree) {
-            var SpanChunkGenerator = Razor.Chunks.Generators.SpanChunkGenerator;
             var SourceLocationTracker = Razor.Text.SourceLocationTracker;
             var SpanBuilder = (function () {
                 function SpanBuilder(original) {
@@ -673,7 +346,6 @@ var Razor;
                     if (!!original) {
                         this.kind = original.kind;
                         this._symbols = original.symbols.slice(0);
-                        this.chunkGenerator = original.chunkGenerator;
                         this.start = original.start;
                     }
                     else {
@@ -710,7 +382,6 @@ var Razor;
                 };
                 SpanBuilder.prototype.reset = function () {
                     this._symbols = [];
-                    this.chunkGenerator = new SpanChunkGenerator();
                     this.start = Razor.SourceLocation.Zero;
                 };
                 return SpanBuilder;
@@ -726,16 +397,19 @@ var Razor;
 /// <reference path="SpanKind.ts" />
 /// <reference path="SpanBuilder.ts" />
 /// <reference path="../../Tokenizer/Symbols/ISymbol.ts" />
-/// <reference path="../../Chunks/Generators/ISpanChunkGenerator.ts" />
-/// <reference path="../../Chunks/Generators/SpanChunkGenerator.ts" />
 /// <reference path="../../Text/StringBuilder.ts" />
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    __.prototype = b.prototype;
+    d.prototype = new __();
+};
 var Razor;
 (function (Razor) {
     var Parser;
     (function (Parser) {
         var SyntaxTree;
         (function (SyntaxTree) {
-            var SpanChunkGenerator = Razor.Chunks.Generators.SpanChunkGenerator;
             var StringBuilder = Razor.Text.StringBuilder;
             var SourceLocationTracker = Razor.Text.SourceLocationTracker;
             var Span = (function (_super) {
@@ -744,13 +418,6 @@ var Razor;
                     _super.call(this);
                     this.replaceWith(builder);
                 }
-                Object.defineProperty(Span.prototype, "chunkGenerator", {
-                    get: function () {
-                        return this._chunkGenerator;
-                    },
-                    enumerable: true,
-                    configurable: true
-                });
                 Object.defineProperty(Span.prototype, "content", {
                     get: function () {
                         return this._content;
@@ -836,7 +503,6 @@ var Razor;
                         return false;
                     }
                     var result = this.kind === other.kind &&
-                        this.chunkGenerator.equals(other.chunkGenerator) &&
                         this.content === other.content;
                     if (result) {
                         if (this.symbols.length !== other.symbols.length) {
@@ -892,7 +558,6 @@ var Razor;
                 Span.prototype.replaceWith = function (builder) {
                     this._kind = builder.kind;
                     this._symbols = builder.symbols;
-                    this._chunkGenerator = builder.chunkGenerator || new SpanChunkGenerator();
                     this._start = builder.start;
                     builder.reset();
                     this._content = Span.getContent(this._symbols);
@@ -905,9 +570,7 @@ var Razor;
                     var builder = new StringBuilder();
                     builder.append(SyntaxTree.SpanKind[this.kind]);
                     builder.append("Span at " + this.start.toString() + "::" + this.length.toString() + " - [" + this.content + "]");
-                    builder.append(" Gen: <");
-                    builder.append(this.chunkGenerator.toString());
-                    builder.append("> {");
+                    builder.append("{");
                     builder.append(this._groupedSymbols);
                     builder.append("}");
                     return builder.toString();
@@ -918,6 +581,176 @@ var Razor;
         })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
     })(Parser = Razor.Parser || (Razor.Parser = {}));
 })(Razor || (Razor = {}));
+/// <reference path="../RazorError.ts" />
+/// <reference path="SyntaxTree/Block.ts" />
+/// <reference path="SyntaxTree/Span.ts" />
+/// <reference path="../ParserResults.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var ParserVisitor = (function () {
+            function ParserVisitor() {
+            }
+            ParserVisitor.prototype.onComplete = function () {
+            };
+            ParserVisitor.prototype.visit = function (result) {
+                result.document.accept(this);
+                for (var i = 0; i < result.parserErrors.length; i++) {
+                    this.visitError(result.parserErrors[i]);
+                }
+                this.onComplete();
+            };
+            ParserVisitor.prototype.visitBlock = function (block) {
+                this.visitStartBlock(block);
+                for (var i = 0; i < block.children.length; i++) {
+                    block.children[i].accept(this);
+                }
+                this.visitEndBlock(block);
+            };
+            ParserVisitor.prototype.visitEndBlock = function (block) {
+            };
+            ParserVisitor.prototype.visitError = function (error) {
+            };
+            ParserVisitor.prototype.visitSpan = function (span) {
+            };
+            ParserVisitor.prototype.visitStartBlock = function (block) {
+            };
+            return ParserVisitor;
+        })();
+        Parser.ParserVisitor = ParserVisitor;
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../../Internals/IEquatable.ts" />
+/// <reference path="Block.ts" />
+/// <reference path="../../SourceLocation.ts" />
+/// <reference path="../ParserVisitor.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            var SyntaxTreeNode = (function () {
+                function SyntaxTreeNode() {
+                }
+                SyntaxTreeNode.prototype.accept = function (visitor) { };
+                SyntaxTreeNode.prototype.equals = function (other) {
+                    return false;
+                };
+                SyntaxTreeNode.prototype.equivalentTo = function (node) {
+                    return false;
+                };
+                return SyntaxTreeNode;
+            })();
+            SyntaxTree.SyntaxTreeNode = SyntaxTreeNode;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            (function (BlockType) {
+                BlockType[BlockType["Statement"] = 0] = "Statement";
+                BlockType[BlockType["Directive"] = 1] = "Directive";
+                BlockType[BlockType["Functions"] = 2] = "Functions";
+                BlockType[BlockType["Expression"] = 3] = "Expression";
+                BlockType[BlockType["Helper"] = 4] = "Helper";
+                BlockType[BlockType["Markup"] = 5] = "Markup";
+                BlockType[BlockType["Section"] = 6] = "Section";
+                BlockType[BlockType["Template"] = 7] = "Template";
+                BlockType[BlockType["Comment"] = 8] = "Comment";
+                BlockType[BlockType["Tag"] = 9] = "Tag";
+            })(SyntaxTree.BlockType || (SyntaxTree.BlockType = {}));
+            var BlockType = SyntaxTree.BlockType;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="SyntaxTreeNode.ts" />
+/// <reference path="BlockType.ts" />
+/// <reference path="Block.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            var BlockBuilder = (function () {
+                function BlockBuilder(original) {
+                    if (!original) {
+                        this.reset();
+                    }
+                    else {
+                        this.type = original.type;
+                        this.children = original.children.slice(0);
+                    }
+                }
+                Object.defineProperty(BlockBuilder.prototype, "children", {
+                    get: function () {
+                        return this._children;
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                BlockBuilder.prototype.build = function () {
+                    return new SyntaxTree.Block(this);
+                };
+                BlockBuilder.prototype.reset = function () {
+                    this.type = null;
+                    this.children = [];
+                };
+                return BlockBuilder;
+            })();
+            SyntaxTree.BlockBuilder = BlockBuilder;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="IDisposable.ts" />
+var Razor;
+(function (Razor) {
+    var DisposableAction = (function () {
+        function DisposableAction(action, context) {
+            this._action = action;
+            this._context = context || null;
+        }
+        DisposableAction.prototype.dispose = function () {
+            this._action.apply(this._context, []);
+        };
+        return DisposableAction;
+    })();
+    Razor.DisposableAction = DisposableAction;
+})(Razor || (Razor = {}));
+/// <reference path="../Internals/DisposableAction.ts" />
+var Razor;
+(function (Razor) {
+    var Text;
+    (function (Text) {
+        var LookaheadToken = (function (_super) {
+            __extends(LookaheadToken, _super);
+            function LookaheadToken(action, context) {
+                _super.call(this, action, context);
+                this._accepted = false;
+            }
+            LookaheadToken.prototype.accept = function () {
+                this._accepted = true;
+            };
+            LookaheadToken.prototype.dispose = function () {
+                if (!this._accepted) {
+                    _super.prototype.dispose.call(this);
+                }
+            };
+            return LookaheadToken;
+        })(Razor.DisposableAction);
+        Text.LookaheadToken = LookaheadToken;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../SourceLocation.ts" />
+/// <reference path="ITextBuffer.ts" />
+/// <reference path="LookaheadToken.ts" />
+/// <reference path="ITextDocument.ts" />"
 /// <reference path="ITextBuffer.ts" />
 /// <reference path="../Internals/IEquatable.ts" />
 /// <reference path="../Parser/SyntaxTree/Span.ts" />
@@ -1100,8 +933,6 @@ var Razor;
 /// <reference path="BlockType.ts" />
 /// <reference path="BlockBuilder.ts" />
 /// <reference path="../../Tokenizer/Symbols/ISymbol.ts" />
-/// <reference path="../../Chunks/Generators/IParentChunkGenerator.ts" />
-/// <reference path="../../Chunks/Generators/ParentChunkGenerator.ts" />
 /// <reference path="../../Text/StringBuilder.ts" />
 /// <reference path="../../Text/TextChange.ts" />
 var Razor;
@@ -1113,7 +944,7 @@ var Razor;
             var StringBuilder = Razor.Text.StringBuilder;
             var Block = (function (_super) {
                 __extends(Block, _super);
-                function Block(sourceOrType, contents, generator) {
+                function Block(sourceOrType, contents) {
                     _super.call(this);
                     var type;
                     var source;
@@ -1121,14 +952,12 @@ var Razor;
                         source = sourceOrType;
                         type = source.type;
                         contents = source.children;
-                        generator = source.chunkGenerator;
                     }
                     else {
                         type = sourceOrType;
                     }
                     this._type = type;
                     this._children = contents;
-                    this._chunkGenetator = generator;
                     for (var i = 0; i < this._children.length; i++) {
                         this._children[i].parent = this;
                     }
@@ -1136,13 +965,6 @@ var Razor;
                 Object.defineProperty(Block.prototype, "children", {
                     get: function () {
                         return this._children;
-                    },
-                    enumerable: true,
-                    configurable: true
-                });
-                Object.defineProperty(Block.prototype, "chunkGenerator", {
-                    get: function () {
-                        return this._chunkGenetator;
                     },
                     enumerable: true,
                     configurable: true
@@ -1192,8 +1014,7 @@ var Razor;
                     if (!(other instanceof Block)) {
                         return false;
                     }
-                    var result = this.type === other.type &&
-                        this.chunkGenerator.equals(other.chunkGenerator);
+                    var result = this.type === other.type;
                     if (result) {
                         if (this.children.length !== other.children.length) {
                             return false;
@@ -1287,9 +1108,6 @@ var Razor;
                     builder.append(this.start.toString());
                     builder.append("::");
                     builder.append(this.length.toString());
-                    builder.append(" (Gen:");
-                    builder.append(this.chunkGenerator.toString());
-                    builder.append(")");
                     return builder.toString();
                 };
                 return Block;
@@ -1298,95 +1116,137 @@ var Razor;
         })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
     })(Parser = Razor.Parser || (Razor.Parser = {}));
 })(Razor || (Razor = {}));
-/// <reference path="../RazorError.ts" />
-/// <reference path="SyntaxTree/Block.ts" />
-/// <reference path="SyntaxTree/Span.ts" />
+/// <reference path="Parser/SyntaxTree/Block.ts" />
+/// <reference path="ErrorSink.ts" />
+/// <reference path="RazorError.ts" />
 var Razor;
 (function (Razor) {
-    var Parser;
-    (function (Parser) {
-        var ParserVisitor = (function () {
-            function ParserVisitor() {
+    var ParserResults = (function () {
+        function ParserResults(document, tagHelperDescriptors, errorSink, success) {
+            if (arguments.length > 3) {
+                success = (errorSink.errors.length === 0);
             }
-            ParserVisitor.prototype.onComplete = function () {
-            };
-            ParserVisitor.prototype.visitBlock = function (block) {
-                this.visitStartBlock(block);
-                for (var i = 0; i < block.children.length; i++) {
-                    block.children[i].accept(this);
+            this._success = success;
+            this._document = document;
+            this._errorSink = errorSink;
+            this._tagHelperDescriptors = tagHelperDescriptors;
+            this._prefix = null;
+            if (tagHelperDescriptors && tagHelperDescriptors.length) {
+                this._prefix = tagHelperDescriptors[0].prefix;
+            }
+        }
+        Object.defineProperty(ParserResults.prototype, "document", {
+            get: function () {
+                return this._document;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ParserResults.prototype, "errorSink", {
+            get: function () {
+                return this._errorSink;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ParserResults.prototype, "parserErrors", {
+            get: function () {
+                return this._errorSink.errors;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ParserResults.prototype, "prefix", {
+            get: function () {
+                return this._prefix;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ParserResults.prototype, "success", {
+            get: function () {
+                return this._success;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        Object.defineProperty(ParserResults.prototype, "tagHelperDescriptors", {
+            get: function () {
+                return this._tagHelperDescriptors;
+            },
+            enumerable: true,
+            configurable: true
+        });
+        return ParserResults;
+    })();
+    Razor.ParserResults = ParserResults;
+})(Razor || (Razor = {}));
+/// <reference path="State.ts" />
+var Razor;
+(function (Razor) {
+    var StateResult = (function () {
+        function StateResult(nextOrOutput, next) {
+            if (typeof nextOrOutput === "function") {
+                this.next = nextOrOutput;
+                this.hasOutput = false;
+                this.output = null;
+            }
+            else {
+                this.next = next;
+                this.hasOutput = true;
+                this.output = nextOrOutput;
+            }
+        }
+        return StateResult;
+    })();
+    Razor.StateResult = StateResult;
+})(Razor || (Razor = {}));
+/// <reference path="StateResult.ts" />
+/// <reference path="State.ts" />
+/// <reference path="StateResult.ts" />
+var Razor;
+(function (Razor) {
+    var StateMachine = (function () {
+        function StateMachine() {
+        }
+        StateMachine.prototype.stay = function (output) {
+            return (arguments.length)
+                ? new Razor.StateResult(output, this.currentState)
+                : new Razor.StateResult(this.currentState);
+        };
+        StateMachine.prototype.stop = function () {
+            return null;
+        };
+        StateMachine.prototype.transition = function (outputOrNewState, newState) {
+            return new Razor.StateResult(outputOrNewState, newState);
+        };
+        StateMachine.prototype.turn = function () {
+            if (!!this.currentState) {
+                var result;
+                do {
+                    result = this.currentState();
+                    this.currentState = result.next;
+                } while (!!result && !result.hasOutput);
+                if (!result) {
+                    return null;
                 }
-                this.visitEndBlock(block);
-            };
-            ParserVisitor.prototype.visitEndBlock = function (block) {
-            };
-            ParserVisitor.prototype.visitError = function (error) {
-            };
-            ParserVisitor.prototype.visitSpan = function (span) {
-            };
-            ParserVisitor.prototype.visitStartBlock = function (block) {
-            };
-            return ParserVisitor;
-        })();
-        Parser.ParserVisitor = ParserVisitor;
-    })(Parser = Razor.Parser || (Razor.Parser = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../../Internals/IEquatable.ts" />
-/// <reference path="Block.ts" />
-/// <reference path="../../SourceLocation.ts" />
-/// <reference path="../ParserVisitor.ts" />
-var Razor;
-(function (Razor) {
-    var Parser;
-    (function (Parser) {
-        var SyntaxTree;
-        (function (SyntaxTree) {
-            var SyntaxTreeNode = (function () {
-                function SyntaxTreeNode() {
-                }
-                SyntaxTreeNode.prototype.accept = function (visitor) { };
-                SyntaxTreeNode.prototype.equals = function (other) {
-                    return false;
-                };
-                SyntaxTreeNode.prototype.equivalentTo = function (node) {
-                    return false;
-                };
-                return SyntaxTreeNode;
-            })();
-            SyntaxTree.SyntaxTreeNode = SyntaxTreeNode;
-        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
-    })(Parser = Razor.Parser || (Razor.Parser = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../SourceLocation.ts" />
-/// <reference path="../Parser/SyntaxTree/SyntaxTreeNode.ts" />
-var Razor;
-(function (Razor) {
-    var Chunks;
-    (function (Chunks) {
-        var Chunk = (function () {
-            function Chunk() {
+                return result.output;
             }
-            return Chunk;
-        })();
-        Chunks.Chunk = Chunk;
-    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
+            return null;
+        };
+        return StateMachine;
+    })();
+    Razor.StateMachine = StateMachine;
 })(Razor || (Razor = {}));
-/// <reference path="Chunk.ts" />
 var Razor;
 (function (Razor) {
-    var Chunks;
-    (function (Chunks) {
-        var LiteralChunk = (function (_super) {
-            __extends(LiteralChunk, _super);
-            function LiteralChunk() {
-                _super.apply(this, arguments);
-            }
-            LiteralChunk.prototype.toString = function () {
-                return [this.start.toString(), ' = ', this.text].join('');
-            };
-            return LiteralChunk;
-        })(Chunks.Chunk);
-        Chunks.LiteralChunk = LiteralChunk;
-    })(Chunks = Razor.Chunks || (Razor.Chunks = {}));
+    var Tuple = (function () {
+        function Tuple(item1, item2) {
+            this.item1 = item1;
+        }
+        return Tuple;
+    })();
+    Razor.Tuple = Tuple;
 })(Razor || (Razor = {}));
 /// <reference path="IDisposable.ts" />"
 var Razor;
@@ -1406,46 +1266,161 @@ var Razor;
     }
     Razor.Using = Using;
 })(Razor || (Razor = {}));
+/// <reference path="SyntaxTree/Block.ts" />
+/// <reference path="../ErrorSink.ts" />
 var Razor;
 (function (Razor) {
     var Parser;
     (function (Parser) {
-        var SyntaxTree;
-        (function (SyntaxTree) {
-            (function (AcceptedCharacters) {
-                AcceptedCharacters[AcceptedCharacters["None"] = 0] = "None";
-                AcceptedCharacters[AcceptedCharacters["NewLine"] = 1] = "NewLine";
-                AcceptedCharacters[AcceptedCharacters["WhiteSpace"] = 2] = "WhiteSpace";
-                AcceptedCharacters[AcceptedCharacters["NonWhiteSpace"] = 4] = "NonWhiteSpace";
-                AcceptedCharacters[AcceptedCharacters["AllWhiteSpace"] = 3] = "AllWhiteSpace";
-                AcceptedCharacters[AcceptedCharacters["Any"] = 7] = "Any";
-                AcceptedCharacters[AcceptedCharacters["AnyExceptNewLine"] = 6] = "AnyExceptNewLine";
-            })(SyntaxTree.AcceptedCharacters || (SyntaxTree.AcceptedCharacters = {}));
-            var AcceptedCharacters = SyntaxTree.AcceptedCharacters;
-        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+        var RewritingContext = (function () {
+            function RewritingContext(syntaxTree, errorSink) {
+                this.syntaxTree = syntaxTree;
+                this._errors = [];
+                this._errorSink = errorSink;
+            }
+            Object.defineProperty(RewritingContext.prototype, "errorSink", {
+                get: function () {
+                    return this._errorSink;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            return RewritingContext;
+        })();
+        Parser.RewritingContext = RewritingContext;
     })(Parser = Razor.Parser || (Razor.Parser = {}));
 })(Razor || (Razor = {}));
-/// <reference path="SyntaxTreeNode.ts" />
+/// <reference path="RewritingContext.ts" />
+/// <reference path="../SourceLocation.ts" />
 var Razor;
 (function (Razor) {
-    var Parser;
-    (function (Parser) {
-        var SyntaxTree;
-        (function (SyntaxTree) {
-            var EquivalenceComparer = (function () {
-                function EquivalenceComparer() {
+    var Text;
+    (function (Text) {
+        var LocationTagged = (function () {
+            function LocationTagged(value, locationOrOffset, line, col) {
+                this._location = Razor.SourceLocation.Undefined;
+                this._value = null;
+                this._value = value;
+                if (locationOrOffset instanceof Razor.SourceLocation) {
+                    this._location = locationOrOffset;
                 }
-                EquivalenceComparer.prototype.equals = function (nodeX, nodeY) {
-                    if (nodeX === nodeY) {
+                else {
+                    this._location = new Razor.SourceLocation(locationOrOffset, line, col);
+                }
+            }
+            Object.defineProperty(LocationTagged.prototype, "location", {
+                get: function () {
+                    return this._location;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(LocationTagged.prototype, "value", {
+                get: function () {
+                    return this._value;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            LocationTagged.prototype.equals = function (other) {
+                if (!!other) {
+                    if (this === other) {
                         return true;
                     }
-                    return (!!nodeX && nodeX.equivalentTo(nodeY));
+                    return this.location.equals(other.location) &&
+                        (this.value === other.value);
+                }
+                return false;
+            };
+            LocationTagged.prototype.toString = function () {
+                return (this.value || "").toString();
+            };
+            LocationTagged.prototype.toFormattedString = function () {
+                return [this.toString(), '@', this.location.toString()].join('');
+            };
+            return LocationTagged;
+        })();
+        Text.LocationTagged = LocationTagged;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
+/// <reference path="ISymbol.ts" />
+/// <reference path="../../SourceLocation.ts" />
+/// <reference path="../../RazorError.ts" />
+/// <reference path="../../Text/LocationTagged.ts" />
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var Symbols;
+        (function (Symbols) {
+            var LocationTagged = Razor.Text.LocationTagged;
+            var SymbolBase = (function () {
+                function SymbolBase(start, content, type, errors) {
+                    this.start = start;
+                    this.content = content;
+                    this.type = type;
+                    this.errors = errors;
+                }
+                Object.defineProperty(SymbolBase.prototype, "runtimeTypeName", {
+                    get: function () {
+                        return "SymbolBase";
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                Object.defineProperty(SymbolBase.prototype, "typeName", {
+                    get: function () {
+                        return this.type.toString();
+                    },
+                    enumerable: true,
+                    configurable: true
+                });
+                SymbolBase.prototype.changeStart = function (newStart) {
+                    this.start = newStart;
                 };
-                return EquivalenceComparer;
+                SymbolBase.prototype.getContent = function () {
+                    return new LocationTagged(this.content, this.start);
+                };
+                SymbolBase.prototype.equals = function (other) {
+                    if (!other) {
+                        return false;
+                    }
+                    return this.start.equals(other.start) &&
+                        this.content === other.content &&
+                        this.type === other.type;
+                };
+                SymbolBase.prototype.offsetStart = function (documentStart) {
+                    this.start = Razor.SourceLocation.add(documentStart, this.start);
+                };
+                SymbolBase.prototype.toString = function () {
+                    return [this.start.toString(), ' ', this.typeName, ' - ', this.content].join('');
+                };
+                return SymbolBase;
             })();
-            SyntaxTree.EquivalenceComparer = EquivalenceComparer;
-        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
-    })(Parser = Razor.Parser || (Razor.Parser = {}));
+            Symbols.SymbolBase = SymbolBase;
+        })(Symbols = Tokenizer.Symbols || (Tokenizer.Symbols = {}));
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
+})(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Tokenizer;
+    (function (Tokenizer) {
+        var Symbols;
+        (function (Symbols) {
+            (function (KnownSymbolType) {
+                KnownSymbolType[KnownSymbolType["WhiteSpace"] = 0] = "WhiteSpace";
+                KnownSymbolType[KnownSymbolType["Newline"] = 1] = "Newline";
+                KnownSymbolType[KnownSymbolType["Identifier"] = 2] = "Identifier";
+                KnownSymbolType[KnownSymbolType["Keyword"] = 3] = "Keyword";
+                KnownSymbolType[KnownSymbolType["Transition"] = 4] = "Transition";
+                KnownSymbolType[KnownSymbolType["Unknown"] = 5] = "Unknown";
+                KnownSymbolType[KnownSymbolType["CommentStart"] = 6] = "CommentStart";
+                KnownSymbolType[KnownSymbolType["CommentStar"] = 7] = "CommentStar";
+                KnownSymbolType[KnownSymbolType["CommentBody"] = 8] = "CommentBody";
+            })(Symbols.KnownSymbolType || (Symbols.KnownSymbolType = {}));
+            var KnownSymbolType = Symbols.KnownSymbolType;
+        })(Symbols = Tokenizer.Symbols || (Tokenizer.Symbols = {}));
+    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
 })(Razor || (Razor = {}));
 /// <reference path="../Internals/IDisposable.ts" />
 var Razor;
@@ -1770,6 +1745,354 @@ var Razor;
         Text.SeekableTextReader = SeekableTextReader;
     })(Text = Razor.Text || (Razor.Text = {}));
 })(Razor || (Razor = {}));
+/// <reference path="../Tokenizer/Symbols/ISymbol.ts" />
+/// <reference path="../Tokenizer/Symbols/SymbolBase.ts" />
+/// <reference path="../Tokenizer/Symbols/KnownSymbolType.ts" />
+/// <referemce path="../Tokenizer/Tokenizer.ts" />
+/// <referemce path="../Tokenizer/ITokenizer.ts" />
+/// <reference path="../Text/ITextDocument.ts" />
+/// <reference path="../Text/SeekableTextReader.ts" />
+/// <reference path="../SourceLocation.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var LanguageCharacteristics = (function () {
+            function LanguageCharacteristics() {
+            }
+            return LanguageCharacteristics;
+        })();
+        Parser.LanguageCharacteristics = LanguageCharacteristics;
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            (function (AcceptedCharacters) {
+                AcceptedCharacters[AcceptedCharacters["None"] = 0] = "None";
+                AcceptedCharacters[AcceptedCharacters["NewLine"] = 1] = "NewLine";
+                AcceptedCharacters[AcceptedCharacters["WhiteSpace"] = 2] = "WhiteSpace";
+                AcceptedCharacters[AcceptedCharacters["NonWhiteSpace"] = 4] = "NonWhiteSpace";
+                AcceptedCharacters[AcceptedCharacters["AllWhiteSpace"] = 3] = "AllWhiteSpace";
+                AcceptedCharacters[AcceptedCharacters["Any"] = 7] = "Any";
+                AcceptedCharacters[AcceptedCharacters["AnyExceptNewLine"] = 6] = "AnyExceptNewLine";
+            })(SyntaxTree.AcceptedCharacters || (SyntaxTree.AcceptedCharacters = {}));
+            var AcceptedCharacters = SyntaxTree.AcceptedCharacters;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="../SourceLocation.ts" />
+/// <reference path="ITextDocument.ts" />
+/// <reference path="TextReader.ts" />"
+var Razor;
+(function (Razor) {
+    var Text;
+    (function (Text) {
+        var TextDocumentReader = (function (_super) {
+            __extends(TextDocumentReader, _super);
+            function TextDocumentReader(source) {
+                _super.call(this);
+                this._document = source;
+            }
+            Object.defineProperty(TextDocumentReader.prototype, "document", {
+                get: function () {
+                    return this._document;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextDocumentReader.prototype, "length", {
+                get: function () {
+                    return this._document.length;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextDocumentReader.prototype, "location", {
+                get: function () {
+                    return this._document.location;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(TextDocumentReader.prototype, "position", {
+                get: function () {
+                    return this._document.position;
+                },
+                set: function (value) {
+                    this._document.position = value;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            TextDocumentReader.prototype.beginLookahead = function () {
+                var _this = this;
+                var start = this.position;
+                return new Text.LookaheadToken(function () { return _this.position = start; });
+            };
+            TextDocumentReader.prototype.peek = function () {
+                return this._document.peek();
+            };
+            TextDocumentReader.prototype.read = function (buffer, index, count) {
+                if (arguments.length === 3) {
+                    return _super.prototype.read.call(this, buffer, index, count);
+                }
+                return this._document.read();
+            };
+            TextDocumentReader.prototype.seek = function (count) {
+                this.position += count;
+            };
+            TextDocumentReader.prototype.toDocument = function () {
+                return this;
+            };
+            return TextDocumentReader;
+        })(Text.TextReader);
+        Text.TextDocumentReader = TextDocumentReader;
+    })(Text = Razor.Text || (Razor.Text = {}));
+})(Razor || (Razor = {}));
+/// <reference path="SyntaxTree/BlockBuilder.ts" />
+/// <reference path="SyntaxTree/BlockType.ts" />
+/// <reference path="SyntaxTree/Span.ts" />
+/// <reference path="SyntaxTree/AcceptedCharacters.ts" />
+/// <reference path="../ErrorSink.ts" />
+/// <reference path="../Text/ITextDocument.ts" />
+/// <reference path="../Text/TextDocumentReader.ts" />
+/// <reference path="ParserBase.ts" />
+/// <reference path="../RazorError.ts" />
+/// <reference path="../Internals/DisposableAction.ts" />
+/// <reference path="../Internals/IDisposable.ts" />
+/// <reference path="../SourceLocation.ts" />
+/// <reference path="../ParserResults.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var BlockBuilder = Razor.Parser.SyntaxTree.BlockBuilder;
+        var AcceptedCharacters = Razor.Parser.SyntaxTree.AcceptedCharacters;
+        var TextDocumentReader = Razor.Text.TextDocumentReader;
+        var DisposableAction = Razor.DisposableAction;
+        var ParserResults = Razor.ParserResults;
+        var EOF = -1;
+        var ParserContext = (function () {
+            function ParserContext(source, codeParser, markupParser, activeParser, errorSink) {
+                this._blockStack = [];
+                this._terminated = false;
+                this._source = new TextDocumentReader(source);
+                this._codeParser = codeParser;
+                this._markupParser = markupParser;
+                this._activeParser = activeParser;
+                this._errorSink = errorSink;
+            }
+            Object.defineProperty(ParserContext.prototype, "activeParser", {
+                get: function () {
+                    return this._activeParser;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ParserContext.prototype, "blockStack", {
+                get: function () {
+                    return this._blockStack;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ParserContext.prototype, "codeParser", {
+                get: function () {
+                    return this._codeParser;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ParserContext.prototype, "currentBlock", {
+                get: function () {
+                    if (this._blockStack.length > 0) {
+                        return this._blockStack[this._blockStack.length - 1];
+                    }
+                    return null;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ParserContext.prototype, "currentCharacter", {
+                get: function () {
+                    if (this._terminated) {
+                        return '\0';
+                    }
+                    var ch = this.source.peek();
+                    if (ch === EOF) {
+                        return '\0';
+                    }
+                    return ch;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ParserContext.prototype, "endOfFile", {
+                get: function () {
+                    return this._terminated || this.source.peek() === EOF;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ParserContext.prototype, "errors", {
+                get: function () {
+                    return this._errorSink.errors;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ParserContext.prototype, "lastAcceptedCharacters", {
+                get: function () {
+                    return AcceptedCharacters.None;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ParserContext.prototype, "lastSpan", {
+                get: function () {
+                    return this._lastSpan;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ParserContext.prototype, "markupParser", {
+                get: function () {
+                    return this._markupParser;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ParserContext.prototype, "source", {
+                get: function () {
+                    return this._source;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            ParserContext.prototype.addSpan = function (span) {
+                if (this._blockStack.length === 0) {
+                    throw "No current block";
+                }
+                this._blockStack[this._blockStack.length - 1].children.push(span);
+                this._lastSpan = span;
+            };
+            ParserContext.prototype.completeParse = function () {
+                if (this._blockStack.length === 0) {
+                    throw "Cannot complete tree - no root block";
+                }
+                if (this._blockStack.length !== 1) {
+                    throw "Cannot complete tree - outstanding blocks";
+                }
+                return new ParserResults(this._blockStack[this._blockStack.length - 1].build(), [], this._errorSink);
+            };
+            ParserContext.prototype.endBlock = function () {
+                if (this._blockStack.length === 0) {
+                    throw "End block called without matching start block";
+                }
+                if (this._blockStack.length > 1) {
+                    var block = this._blockStack.pop();
+                    this._blockStack[this._blockStack.length - 1].children.push(block.build());
+                }
+                else {
+                    this._terminated = true;
+                }
+            };
+            ParserContext.prototype.isWithin = function (type) {
+                for (var i = 0; i < this._blockStack.length; i++) {
+                    if (this._blockStack[i].type === type) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+            ParserContext.prototype.onError = function (errorOrLocation, message, length) {
+                this._errorSink.onError(errorOrLocation, message, length);
+            };
+            ParserContext.prototype.startBlock = function (blockType) {
+                var _this = this;
+                var builder = new BlockBuilder();
+                builder.type = blockType;
+                return new DisposableAction(function () { return _this.endBlock(); }, this);
+            };
+            ParserContext.prototype.switchActiveParser = function () {
+                if (this.activeParser === this.codeParser) {
+                    this._activeParser = this.markupParser;
+                }
+                else {
+                    this._activeParser = this.codeParser;
+                }
+            };
+            return ParserContext;
+        })();
+        Parser.ParserContext = ParserContext;
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="ParserContext.ts" />
+/// <reference path="SyntaxTree/SpanBuilder.ts" />
+/// <reference path="../SourceLocation.ts" />
+/// <reference path="../Internals/Tuple.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var ParserBase = (function () {
+            function ParserBase() {
+            }
+            Object.defineProperty(ParserBase.prototype, "isMarkupParser", {
+                get: function () {
+                    return false;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            Object.defineProperty(ParserBase.prototype, "otherParser", {
+                get: function () {
+                    return null;
+                },
+                enumerable: true,
+                configurable: true
+            });
+            ParserBase.prototype.buildSpan = function (span, start, content) {
+                return null;
+            };
+            ParserBase.prototype.parseBlock = function () { };
+            ParserBase.prototype.parseDocument = function () {
+                throw "Not a markup parser";
+            };
+            ParserBase.prototype.parseSection = function (nestingSequences, caseSensitive) {
+                throw "Not a markup parser";
+            };
+            return ParserBase;
+        })();
+        Parser.ParserBase = ParserBase;
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
+/// <reference path="SyntaxTreeNode.ts" />
+var Razor;
+(function (Razor) {
+    var Parser;
+    (function (Parser) {
+        var SyntaxTree;
+        (function (SyntaxTree) {
+            var EquivalenceComparer = (function () {
+                function EquivalenceComparer() {
+                }
+                EquivalenceComparer.prototype.equals = function (nodeX, nodeY) {
+                    if (nodeX === nodeY) {
+                        return true;
+                    }
+                    return (!!nodeX && nodeX.equivalentTo(nodeY));
+                };
+                return EquivalenceComparer;
+            })();
+            SyntaxTree.EquivalenceComparer = EquivalenceComparer;
+        })(SyntaxTree = Parser.SyntaxTree || (Parser.SyntaxTree = {}));
+    })(Parser = Razor.Parser || (Razor.Parser = {}));
+})(Razor || (Razor = {}));
 /// <reference path="../Text/ITextBuffer.ts" />
 /// <reference path="../Text/ITextDocument.ts" />
 /// <reference path="../Text/LookaheadToken.ts" />
@@ -2015,58 +2338,6 @@ var Razor;
 (function (Razor) {
     var Text;
     (function (Text) {
-        var LocationTagged = (function () {
-            function LocationTagged(value, locationOrOffset, line, col) {
-                this._location = Razor.SourceLocation.Undefined;
-                this._value = null;
-                this._value = value;
-                if (locationOrOffset instanceof Razor.SourceLocation) {
-                    this._location = locationOrOffset;
-                }
-                else {
-                    this._location = new Razor.SourceLocation(locationOrOffset, line, col);
-                }
-            }
-            Object.defineProperty(LocationTagged.prototype, "location", {
-                get: function () {
-                    return this._location;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(LocationTagged.prototype, "value", {
-                get: function () {
-                    return this._value;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            LocationTagged.prototype.equals = function (other) {
-                if (!!other) {
-                    if (this === other) {
-                        return true;
-                    }
-                    return this.location.equals(other.location) &&
-                        (this.value === other.value);
-                }
-                return false;
-            };
-            LocationTagged.prototype.toString = function () {
-                return (this.value || "").toString();
-            };
-            LocationTagged.prototype.toFormattedString = function () {
-                return [this.toString(), '@', this.location.toString()].join('');
-            };
-            return LocationTagged;
-        })();
-        Text.LocationTagged = LocationTagged;
-    })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../SourceLocation.ts" />
-var Razor;
-(function (Razor) {
-    var Text;
-    (function (Text) {
         var SourceSpan = (function () {
             function SourceSpan() {
             }
@@ -2239,133 +2510,6 @@ var Razor;
         })(Text.TextChangeType || (Text.TextChangeType = {}));
         var TextChangeType = Text.TextChangeType;
     })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
-/// <reference path="../SourceLocation.ts" />
-/// <reference path="ITextDocument.ts" />
-/// <reference path="TextReader.ts" />"
-var Razor;
-(function (Razor) {
-    var Text;
-    (function (Text) {
-        var TextDocumentReader = (function (_super) {
-            __extends(TextDocumentReader, _super);
-            function TextDocumentReader(source) {
-                _super.call(this);
-                this._document = source;
-            }
-            Object.defineProperty(TextDocumentReader.prototype, "document", {
-                get: function () {
-                    return this._document;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextDocumentReader.prototype, "length", {
-                get: function () {
-                    return this._document.length;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextDocumentReader.prototype, "location", {
-                get: function () {
-                    return this._document.location;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            Object.defineProperty(TextDocumentReader.prototype, "position", {
-                get: function () {
-                    return this._document.position;
-                },
-                set: function (value) {
-                    this._document.position = value;
-                },
-                enumerable: true,
-                configurable: true
-            });
-            TextDocumentReader.prototype.beginLookahead = function () {
-                var _this = this;
-                var start = this.position;
-                return new Text.LookaheadToken(function () { return _this.position = start; });
-            };
-            TextDocumentReader.prototype.peek = function () {
-                return this._document.peek();
-            };
-            TextDocumentReader.prototype.read = function (buffer, index, count) {
-                if (arguments.length === 3) {
-                    return _super.prototype.read.call(this, buffer, index, count);
-                }
-                return this._document.read();
-            };
-            TextDocumentReader.prototype.seek = function (count) {
-                this.position += count;
-            };
-            TextDocumentReader.prototype.toDocument = function () {
-                return this;
-            };
-            return TextDocumentReader;
-        })(Text.TextReader);
-        Text.TextDocumentReader = TextDocumentReader;
-    })(Text = Razor.Text || (Razor.Text = {}));
-})(Razor || (Razor = {}));
-/// <reference path="ISymbol.ts" />
-/// <reference path="../../SourceLocation.ts" />
-/// <reference path="../../RazorError.ts" />
-/// <reference path="../../Text/LocationTagged.ts" />
-var Razor;
-(function (Razor) {
-    var Tokenizer;
-    (function (Tokenizer) {
-        var Symbols;
-        (function (Symbols) {
-            var LocationTagged = Razor.Text.LocationTagged;
-            var SymbolBase = (function () {
-                function SymbolBase(start, content, type, errors) {
-                    this.start = start;
-                    this.content = content;
-                    this.type = type;
-                    this.errors = errors;
-                }
-                Object.defineProperty(SymbolBase.prototype, "runtimeTypeName", {
-                    get: function () {
-                        return "SymbolBase";
-                    },
-                    enumerable: true,
-                    configurable: true
-                });
-                Object.defineProperty(SymbolBase.prototype, "typeName", {
-                    get: function () {
-                        return this.type.toString();
-                    },
-                    enumerable: true,
-                    configurable: true
-                });
-                SymbolBase.prototype.changeStart = function (newStart) {
-                    this.start = newStart;
-                };
-                SymbolBase.prototype.getContent = function () {
-                    return new LocationTagged(this.content, this.start);
-                };
-                SymbolBase.prototype.equals = function (other) {
-                    if (!other) {
-                        return false;
-                    }
-                    return this.start.equals(other.start) &&
-                        this.content === other.content &&
-                        this.type === other.type;
-                };
-                SymbolBase.prototype.offsetStart = function (documentStart) {
-                    this.start = Razor.SourceLocation.add(documentStart, this.start);
-                };
-                SymbolBase.prototype.toString = function () {
-                    return [this.start.toString(), ' ', this.typeName, ' - ', this.content].join('');
-                };
-                return SymbolBase;
-            })();
-            Symbols.SymbolBase = SymbolBase;
-        })(Symbols = Tokenizer.Symbols || (Tokenizer.Symbols = {}));
-    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
 })(Razor || (Razor = {}));
 var Razor;
 (function (Razor) {
@@ -3588,27 +3732,6 @@ var Razor;
             return TokenizerView;
         })();
         Tokenizer.TokenizerView = TokenizerView;
-    })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
-})(Razor || (Razor = {}));
-var Razor;
-(function (Razor) {
-    var Tokenizer;
-    (function (Tokenizer) {
-        var Symbols;
-        (function (Symbols) {
-            (function (KnownSymbolType) {
-                KnownSymbolType[KnownSymbolType["WhiteSpace"] = 0] = "WhiteSpace";
-                KnownSymbolType[KnownSymbolType["Newline"] = 1] = "Newline";
-                KnownSymbolType[KnownSymbolType["Identifier"] = 2] = "Identifier";
-                KnownSymbolType[KnownSymbolType["Keyword"] = 3] = "Keyword";
-                KnownSymbolType[KnownSymbolType["Transition"] = 4] = "Transition";
-                KnownSymbolType[KnownSymbolType["Unknown"] = 5] = "Unknown";
-                KnownSymbolType[KnownSymbolType["CommentStart"] = 6] = "CommentStart";
-                KnownSymbolType[KnownSymbolType["CommentStar"] = 7] = "CommentStar";
-                KnownSymbolType[KnownSymbolType["CommentBody"] = 8] = "CommentBody";
-            })(Symbols.KnownSymbolType || (Symbols.KnownSymbolType = {}));
-            var KnownSymbolType = Symbols.KnownSymbolType;
-        })(Symbols = Tokenizer.Symbols || (Tokenizer.Symbols = {}));
     })(Tokenizer = Razor.Tokenizer || (Razor.Tokenizer = {}));
 })(Razor || (Razor = {}));
 //# sourceMappingURL=razor.js.map
