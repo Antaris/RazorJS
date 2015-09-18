@@ -36,6 +36,28 @@ namespace Razor.Tokenizer.Symbols
     public keyword: JavaScriptKeyword;
     
     /**
+     * Gets the runtime type of the symbol.
+     * @property
+     * @readonly
+     * @returns {string}
+     */
+    public get runtimeTypeName(): string
+    {
+      return "JavaScriptSymbol";  
+    }
+    
+    /**
+     * Gets the type name.
+     * @propery
+     * @readonly
+     * @returns {string}
+     */
+    public get typeName(): string
+    {
+      return JavaScriptSymbolType[<number>this.type];
+    }
+    
+    /**
      * Determines if the given instance is equal to the current instance.
      * @function
      * @param {JavaScriptSymbol} other - The instance to equate
@@ -48,19 +70,13 @@ namespace Razor.Tokenizer.Symbols
         return false;
       }
       
+      if (!(other instanceof JavaScriptSymbol))
+      {
+        return false;
+      }
+      
       return super.equals(other) &&
              this.keyword === other.keyword;
-    }
-    
-    /**
-     * Gets the type name.
-     * @propery
-     * @readonly
-     * @returns {string}
-     */
-    public get typeName(): string
-    {
-      return JavaScriptSymbolType[<number>this.type];
     }
   }
 }

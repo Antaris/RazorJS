@@ -27,6 +27,17 @@ namespace Razor.Tokenizer.Symbols
     }
     
     /**
+     * Gets the runtime type of the symbol.
+     * @property
+     * @readonly
+     * @returns {string}
+     */
+    public get runtimeTypeName(): string
+    {
+      return "SymbolBase";  
+    }
+    
+    /**
      * Gets the type name.
      * @propery
      * @readonly

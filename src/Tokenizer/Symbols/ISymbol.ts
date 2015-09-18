@@ -25,6 +25,14 @@ namespace Razor.Tokenizer.Symbols
     start: SourceLocation;
     
     /**
+     * Gets the runtime type of the symbol.
+     * @property
+     * @readonly
+     * @returns {string}
+     */
+    runtimeTypeName: string;
+    
+    /**
      * Gets the type name of the symbol.
      * @property
      * @readonly
@@ -38,6 +46,14 @@ namespace Razor.Tokenizer.Symbols
      * @param {SourceLocation} newStart - The new start position of the symbol
      */
     changeStart(newStart: SourceLocation): void;
+    
+    /**
+     * Determines if the given symbol is equal to the current symbol.
+     * @function
+     * @param {any} other - The other object
+     * @returns {boolean}
+     */
+    equals(other: any): boolean;
     
     /**
      * Offsets the start position of the symbol using the document start position
