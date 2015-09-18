@@ -372,7 +372,7 @@ namespace Razor.Tokenizer
       {
         var kwd = JavaScriptKeywordDetector.symbolTypeForIdentifier(this.buffer.toString());
         var type = JavaScriptSymbolType.Identifier;
-        if (!!kwd)
+        if (kwd !== null)
         {
           type = JavaScriptSymbolType.Keyword;
         }

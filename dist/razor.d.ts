@@ -634,6 +634,7 @@ declare module Razor.Tokenizer.Symbols {
     class JavaScriptSymbol extends SymbolBase<JavaScriptSymbolType> {
         constructor(start: SourceLocation, content: string, type: JavaScriptSymbolType, errors?: RazorError[], keyword?: JavaScriptKeyword);
         keyword: JavaScriptKeyword;
+        equals(other: JavaScriptSymbol): boolean;
         typeName: string;
     }
 }

@@ -36,6 +36,23 @@ namespace Razor.Tokenizer.Symbols
     public keyword: JavaScriptKeyword;
     
     /**
+     * Determines if the given instance is equal to the current instance.
+     * @function
+     * @param {JavaScriptSymbol} other - The instance to equate
+     * @returns {boolean}
+     */
+    public equals(other: JavaScriptSymbol): boolean
+    {
+      if (!other)
+      {
+        return false;
+      }
+      
+      return super.equals(other) &&
+             this.keyword === other.keyword;
+    }
+    
+    /**
      * Gets the type name.
      * @propery
      * @readonly

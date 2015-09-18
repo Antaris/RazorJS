@@ -2141,7 +2141,11 @@ var Razor;
             function JavaScriptKeywordDetector() {
             }
             JavaScriptKeywordDetector.symbolTypeForIdentifier = function (id) {
-                return keywords[id] || null;
+                var keyword = keywords[id];
+                if (typeof keyword === "undefined") {
+                    keyword = null;
+                }
+                return keyword;
             };
             return JavaScriptKeywordDetector;
         })();
@@ -2246,6 +2250,13 @@ var Razor;
                     _super.call(this, start, content, type, errors || []);
                     this.keyword = keyword || null;
                 }
+                JavaScriptSymbol.prototype.equals = function (other) {
+                    if (!other) {
+                        return false;
+                    }
+                    return _super.prototype.equals.call(this, other) &&
+                        this.keyword === other.keyword;
+                };
                 Object.defineProperty(JavaScriptSymbol.prototype, "typeName", {
                     get: function () {
                         return Symbols.JavaScriptSymbolType[this.type];
@@ -2509,7 +2520,7 @@ var Razor;
                 if (this.haveContent) {
                     var kwd = JavaScriptKeywordDetector.symbolTypeForIdentifier(this.buffer.toString());
                     var type = JavaScriptSymbolType.Identifier;
-                    if (!!kwd) {
+                    if (kwd !== null) {
                         type = JavaScriptSymbolType.Keyword;
                     }
                     sym = new JavaScriptSymbol(this.currentStart, this.buffer.toString(), type, null, kwd);

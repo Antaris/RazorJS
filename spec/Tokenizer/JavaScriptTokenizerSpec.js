@@ -6,6 +6,7 @@ describe("Razor.Tokenizer", function () {
   var JavaScriptSymbolType = Razor.Tokenizer.Symbols.JavaScriptSymbolType,
       JavaScriptSymbol = Razor.Tokenizer.Symbols.JavaScriptSymbol,
       JavaScriptTokenizer = Razor.Tokenizer.JavaScriptTokenizer,
+      JavaScriptKeyword = Razor.Tokenizer.Symbols.JavaScriptKeyword,
       SourceLocation = Razor.SourceLocation,
       StringBuilder = Razor.Text.StringBuilder,
       StringTextReader = Razor.Text.StringTextReader,
@@ -529,8 +530,60 @@ describe("Razor.Tokenizer", function () {
       testTokenizer("_foo", [new JavaScriptSymbol(SL(0, 0, 0), "_foo", JavaScriptSymbolType.Identifier)]);
     });
     
+    it("identifier starting with dollar is recognized", function () {
+      testTokenizer("$foo", [new JavaScriptSymbol(SL(0, 0, 0), "$foo", JavaScriptSymbolType.Identifier)]);
+    });
+    
     it("identifier can contain digits", function () {
       testTokenizer("foo4", [new JavaScriptSymbol(SL(0, 0, 0), "foo4", JavaScriptSymbolType.Identifier)]);
+    });
+    
+    it("keywords are recognized as keyword tokens", function () {
+      testKeyword("await", JavaScriptKeyword.Await);
+      testKeyword("break", JavaScriptKeyword.Break);
+      testKeyword("case", JavaScriptKeyword.Case);
+      testKeyword("class", JavaScriptKeyword.Class);
+      testKeyword("catch", JavaScriptKeyword.Catch);
+      testKeyword("const", JavaScriptKeyword.Const);
+      testKeyword("continue", JavaScriptKeyword.Continue);
+      testKeyword("debugger", JavaScriptKeyword.Debugger);
+      testKeyword("default", JavaScriptKeyword.Default);
+      testKeyword("delete", JavaScriptKeyword.Delete);
+      testKeyword("do", JavaScriptKeyword.Do);
+      testKeyword("else", JavaScriptKeyword.Else);
+      testKeyword("enum", JavaScriptKeyword.Enum);
+      testKeyword("export", JavaScriptKeyword.Export);
+      testKeyword("extends", JavaScriptKeyword.Extends);
+      testKeyword("false", JavaScriptKeyword.False);
+      testKeyword("finally", JavaScriptKeyword.Finally);
+      testKeyword("for", JavaScriptKeyword.For);
+      testKeyword("function", JavaScriptKeyword.Function);
+      testKeyword("if", JavaScriptKeyword.If);
+      testKeyword("implements", JavaScriptKeyword.Implements);
+      testKeyword("import", JavaScriptKeyword.Import);
+      testKeyword("in", JavaScriptKeyword.In);
+      testKeyword("interface", JavaScriptKeyword.Interface);
+      testKeyword("instanceof", JavaScriptKeyword.Instanceof);
+      testKeyword("let", JavaScriptKeyword.Let);
+      testKeyword("new", JavaScriptKeyword.New);
+      testKeyword("null", JavaScriptKeyword.Null);
+      testKeyword("package", JavaScriptKeyword.Package);
+      testKeyword("private", JavaScriptKeyword.Private);
+      testKeyword("protected", JavaScriptKeyword.Protected);
+      testKeyword("public", JavaScriptKeyword.Public);
+      testKeyword("return", JavaScriptKeyword.Return);
+      testKeyword("static", JavaScriptKeyword.Static);
+      testKeyword("super", JavaScriptKeyword.Super);
+      testKeyword("switch", JavaScriptKeyword.Switch);
+      testKeyword("this", JavaScriptKeyword.This);
+      testKeyword("throw", JavaScriptKeyword.Throw);
+      testKeyword("true", JavaScriptKeyword.True);
+      testKeyword("try", JavaScriptKeyword.Try);
+      testKeyword("typeof", JavaScriptKeyword.Typeof);
+      testKeyword("var", JavaScriptKeyword.Var);
+      testKeyword("void", JavaScriptKeyword.Void);
+      testKeyword("while", JavaScriptKeyword.While);
+      testKeyword("yield", JavaScriptKeyword.Yield);
     });
     
   });
@@ -550,6 +603,14 @@ describe("Razor.Tokenizer", function () {
   function testSingleToken(text, expectedSymbolType)
   {
     testTokenizer(text, [new JavaScriptSymbol(SL(0, 0, 0), text, expectedSymbolType)]);
+  }
+  
+  function testKeyword(keyword, keywordType)
+  {
+    testTokenizer(keyword, 
+    [
+      new JavaScriptSymbol(SL(0, 0, 0), keyword, JavaScriptSymbolType.Keyword, null, keywordType)
+    ]);
   }
   
   function testTokenizer(input, symbols)

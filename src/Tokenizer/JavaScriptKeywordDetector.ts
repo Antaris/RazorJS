@@ -67,7 +67,12 @@ namespace Razor.Tokenizer
      */
     public static symbolTypeForIdentifier(id: string): JavaScriptKeyword
     {
-      return keywords[id] || null;
+      var keyword = keywords[id];
+      if (typeof keyword === "undefined")
+      {
+        keyword = null;
+      }
+      return keyword;
     }
   }
 }
