@@ -88,8 +88,10 @@ declare module Razor.Parser.SyntaxTree {
 declare module Razor.Tokenizer.Symbols {
     interface ISymbol {
         content: string;
+        errors: RazorError[];
         start: SourceLocation;
         runtimeTypeName: string;
+        type: any;
         typeName: string;
         changeStart(newStart: SourceLocation): void;
         equals(other: any): boolean;
@@ -392,7 +394,7 @@ declare module Razor.Tokenizer.Symbols {
 declare module Razor.Tokenizer.Symbols {
     enum KnownSymbolType {
         WhiteSpace = 0,
-        Newline = 1,
+        NewLine = 1,
         Identifier = 2,
         Keyword = 3,
         Transition = 4,
@@ -469,7 +471,29 @@ declare module Razor.Text {
 declare module Razor.Parser {
     import ITokenizer = Razor.Tokenizer.ITokenizer;
     import ISymbol = Razor.Tokenizer.Symbols.ISymbol;
+    import KnownSymbolType = Razor.Tokenizer.Symbols.KnownSymbolType;
+    import ITextDocument = Razor.Text.ITextDocument;
+    import Tuple = Razor.Tuple;
     class LanguageCharacteristics<TTokenizer extends ITokenizer, TSymbol extends ISymbol, TSymbolType> {
+        createMarkerSymbol(location: SourceLocation): TSymbol;
+        createSymbol(location: SourceLocation, content: string, type: TSymbolType, errors: RazorError[]): TSymbol;
+        createTokenizer(source: ITextDocument): TTokenizer;
+        flipBracket(bracket: TSymbol): TSymbol;
+        getKnownSymbolType(type: KnownSymbolType): TSymbolType;
+        getSample(type: TSymbolType): string;
+        isCommentBody(symbol: TSymbol): boolean;
+        isCommentStar(symbol: TSymbol): boolean;
+        isCommentStart(symbol: TSymbol): boolean;
+        isIdentifier(symbol: TSymbol): boolean;
+        isKeyword(symbol: TSymbol): boolean;
+        isKnownSymbolType(symbol: TSymbol, type: KnownSymbolType): boolean;
+        isNewLine(symbol: TSymbol): boolean;
+        isTransition(symbol: TSymbol): boolean;
+        isUnknown(symbol: TSymbol): boolean;
+        isWhiteSpace(symbol: TSymbol): boolean;
+        knowsSymbolType(type: KnownSymbolType): boolean;
+        splitSymbol(symbol: TSymbol, splitAt: number, leftType: TSymbolType): Tuple<TSymbol, TSymbol>;
+        tokenizeString(startOrInput: SourceLocation | string, input?: string): TSymbol[];
     }
 }
 declare module Razor.Parser.SyntaxTree {

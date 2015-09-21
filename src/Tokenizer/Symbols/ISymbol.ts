@@ -1,4 +1,5 @@
 /// <reference path="../../SourceLocation.ts" />
+/// <reference path="../../RazorError.ts" />
 
 namespace Razor.Tokenizer.Symbols
 {
@@ -17,6 +18,14 @@ namespace Razor.Tokenizer.Symbols
     content: string;
     
     /**
+     * Gets the set of errors attributed to the symbol
+     * @property
+     * @readonly
+     * @returns {RazorError[]}
+     */
+    errors: RazorError[];
+    
+    /**
      * Gets the start location of the symbol
      * @property
      * @readonly
@@ -31,6 +40,12 @@ namespace Razor.Tokenizer.Symbols
      * @returns {string}
      */
     runtimeTypeName: string;
+    
+    /**
+     * Gets the symbol type.
+     * @returns {any}
+     */
+    type: any;
     
     /**
      * Gets the type name of the symbol.

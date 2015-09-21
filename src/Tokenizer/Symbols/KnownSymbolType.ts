@@ -7,7 +7,7 @@ namespace Razor.Tokenizer.Symbols
   export enum KnownSymbolType
   {
     WhiteSpace,
-    Newline,
+    NewLine,
     Identifier,
     Keyword,
     Transition,

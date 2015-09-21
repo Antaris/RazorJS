@@ -260,6 +260,7 @@ var Razor;
     })(Parser = Razor.Parser || (Razor.Parser = {}));
 })(Razor || (Razor = {}));
 /// <reference path="../../SourceLocation.ts" />
+/// <reference path="../../RazorError.ts" />
 /// <reference path="../Internals/Environment.ts" />
 var Razor;
 (function (Razor) {
@@ -1409,7 +1410,7 @@ var Razor;
         (function (Symbols) {
             (function (KnownSymbolType) {
                 KnownSymbolType[KnownSymbolType["WhiteSpace"] = 0] = "WhiteSpace";
-                KnownSymbolType[KnownSymbolType["Newline"] = 1] = "Newline";
+                KnownSymbolType[KnownSymbolType["NewLine"] = 1] = "NewLine";
                 KnownSymbolType[KnownSymbolType["Identifier"] = 2] = "Identifier";
                 KnownSymbolType[KnownSymbolType["Keyword"] = 3] = "Keyword";
                 KnownSymbolType[KnownSymbolType["Transition"] = 4] = "Transition";
@@ -1753,13 +1754,103 @@ var Razor;
 /// <reference path="../Text/ITextDocument.ts" />
 /// <reference path="../Text/SeekableTextReader.ts" />
 /// <reference path="../SourceLocation.ts" />
+/// <reference path="../Internals/Using.ts" />
+/// <reference path="../Internals/Tuple.ts" />
+/// <reference path="../RazorError.ts" />
+/// <reference path="../Text/SourceLocationTracker.ts" />
 var Razor;
 (function (Razor) {
     var Parser;
     (function (Parser) {
+        var KnownSymbolType = Razor.Tokenizer.Symbols.KnownSymbolType;
+        var SeekableTextReader = Razor.Text.SeekableTextReader;
+        var SourceLocationTracker = Razor.Text.SourceLocationTracker;
+        var using = Razor.Using;
+        var Tuple = Razor.Tuple;
         var LanguageCharacteristics = (function () {
             function LanguageCharacteristics() {
             }
+            LanguageCharacteristics.prototype.createMarkerSymbol = function (location) {
+                return null;
+            };
+            LanguageCharacteristics.prototype.createSymbol = function (location, content, type, errors) {
+                return null;
+            };
+            LanguageCharacteristics.prototype.createTokenizer = function (source) {
+                return null;
+            };
+            LanguageCharacteristics.prototype.flipBracket = function (bracket) {
+                return null;
+            };
+            LanguageCharacteristics.prototype.getKnownSymbolType = function (type) {
+                return null;
+            };
+            LanguageCharacteristics.prototype.getSample = function (type) {
+                return null;
+            };
+            LanguageCharacteristics.prototype.isCommentBody = function (symbol) {
+                return this.isKnownSymbolType(symbol, KnownSymbolType.CommentBody);
+            };
+            LanguageCharacteristics.prototype.isCommentStar = function (symbol) {
+                return this.isKnownSymbolType(symbol, KnownSymbolType.CommentStar);
+            };
+            LanguageCharacteristics.prototype.isCommentStart = function (symbol) {
+                return this.isKnownSymbolType(symbol, KnownSymbolType.CommentStart);
+            };
+            LanguageCharacteristics.prototype.isIdentifier = function (symbol) {
+                return this.isKnownSymbolType(symbol, KnownSymbolType.Identifier);
+            };
+            LanguageCharacteristics.prototype.isKeyword = function (symbol) {
+                return this.isKnownSymbolType(symbol, KnownSymbolType.Keyword);
+            };
+            LanguageCharacteristics.prototype.isKnownSymbolType = function (symbol, type) {
+                return !!symbol && (symbol.type === this.getKnownSymbolType(type));
+            };
+            LanguageCharacteristics.prototype.isNewLine = function (symbol) {
+                return this.isKnownSymbolType(symbol, KnownSymbolType.NewLine);
+            };
+            LanguageCharacteristics.prototype.isTransition = function (symbol) {
+                return this.isKnownSymbolType(symbol, KnownSymbolType.Transition);
+            };
+            LanguageCharacteristics.prototype.isUnknown = function (symbol) {
+                return this.isKnownSymbolType(symbol, KnownSymbolType.Unknown);
+            };
+            LanguageCharacteristics.prototype.isWhiteSpace = function (symbol) {
+                return this.isKnownSymbolType(symbol, KnownSymbolType.WhiteSpace);
+            };
+            LanguageCharacteristics.prototype.knowsSymbolType = function (type) {
+                return type === KnownSymbolType.Unknown || (this.getKnownSymbolType(type) === this.getKnownSymbolType(KnownSymbolType.Unknown));
+            };
+            LanguageCharacteristics.prototype.splitSymbol = function (symbol, splitAt, leftType) {
+                var left = this.createSymbol(symbol.start, symbol.content.substr(0, splitAt), leftType, []);
+                var right = null;
+                if (splitAt < symbol.content.length) {
+                    right = this.createSymbol(SourceLocationTracker.calculateNewLocation(symbol.start, left.content), symbol.content.substr(splitAt), symbol.type, symbol.errors);
+                }
+                return new Tuple(left, right);
+            };
+            LanguageCharacteristics.prototype.tokenizeString = function (startOrInput, input) {
+                var _this = this;
+                var start;
+                if (startOrInput instanceof Razor.SourceLocation) {
+                    start = startOrInput;
+                }
+                else {
+                    input = startOrInput;
+                    start = Razor.SourceLocation.Zero;
+                }
+                var results = [];
+                var reader = new SeekableTextReader(input);
+                using(reader, function () {
+                    var tok = _this.createTokenizer(reader);
+                    var sym;
+                    while ((sym = tok.nextSymbol()) !== null) {
+                        sym.offsetStart(start);
+                        results.push(sym);
+                    }
+                });
+                return results;
+            };
             return LanguageCharacteristics;
         })();
         Parser.LanguageCharacteristics = LanguageCharacteristics;
